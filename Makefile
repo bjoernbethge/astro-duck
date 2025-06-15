@@ -1,5 +1,5 @@
 # Makefile für Astro Extension
-.PHONY: all clean debug release test
+.PHONY: all clean debug release test set_duckdb_version
 
 # Build-Konfiguration
 BUILD_TYPE ?= release
@@ -8,10 +8,10 @@ EXTENSION_NAME = astro
 SOURCE_FILE = src/astro.cpp
 
 # DuckDB Version Configuration (Fix für Metadaten-Mismatch)
-DUCKDB_VERSION ?= v1.1.3
-DUCKDB_GIT_VERSION ?= v1.1.3
-TARGET_DUCKDB_VERSION ?= v1.1.3
-EXTENSION_VERSION ?= v1.1.3
+DUCKDB_VERSION ?= v1.3.0
+DUCKDB_GIT_VERSION ?= v1.3.0
+TARGET_DUCKDB_VERSION ?= v1.3.0
+EXTENSION_VERSION ?= v1.0.0
 
 # Parallelisierung (18 von 22 Kernen)
 CORES ?= 18
@@ -160,4 +160,12 @@ help:
 	@echo "  make -f Makefile.astro"
 	@echo "  make -f Makefile.astro test"
 	@echo ""
-	@echo "DuckDB Version: $(DUCKDB_VERSION)" 
+	@echo "DuckDB Version: $(DUCKDB_VERSION)"
+
+# Set DuckDB Version (für CI/CD)
+set_duckdb_version:
+	@echo "🔧 Setting DuckDB version to $(DUCKDB_GIT_VERSION)..."
+	@cd duckdb && git fetch --tags
+	@cd duckdb && git checkout $(DUCKDB_GIT_VERSION)
+	@echo "✅ DuckDB version set to $(DUCKDB_GIT_VERSION)"
+	@cd duckdb && git log --oneline -1 
