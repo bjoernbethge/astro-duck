@@ -40,413 +40,385 @@ namespace duckdb {
 // ===== ASTRONOMICAL CONSTANTS =====
 const double SPEED_OF_LIGHT = 299792458.0; // m/s
 const double PARSEC_TO_METERS = 3.0857e16; // meters
-const double SOLAR_MASS = 1.989e30; // kg
-const double EARTH_RADIUS = 6.371e6; // meters
-const double AU = 1.496e11; // meters (Astronomical Unit)
-const double HUBBLE_CONSTANT = 70.0; // km/s/Mpc (approximate)
+const double SOLAR_MASS = 1.989e30;        // kg
+const double EARTH_RADIUS = 6.371e6;       // meters
+const double AU = 1.496e11;                // meters (Astronomical Unit)
+const double HUBBLE_CONSTANT = 70.0;       // km/s/Mpc (approximate)
 
 // ===== ASTRO CATALOG METADATA =====
 struct AstroCatalogMetadata {
-    string catalog_name;
-    string version;
-    unordered_map<string, string> column_metadata;
-    vector<string> coordinate_systems;
-    double epoch = 2000.0; // Default J2000
-    
-    void RegisterColumn(const string &column_name, const string &description) {
-        column_metadata[column_name] = description;
-    }
-    
-    bool HasCoordinateSystem(const string &system) const {
-        return std::find(coordinate_systems.begin(), coordinate_systems.end(), system) != coordinate_systems.end();
-    }
+	string catalog_name;
+	string version;
+	unordered_map<string, string> column_metadata;
+	vector<string> coordinate_systems;
+	double epoch = 2000.0; // Default J2000
+
+	void RegisterColumn(const string &column_name, const string &description) {
+		column_metadata[column_name] = description;
+	}
+
+	bool HasCoordinateSystem(const string &system) const {
+		return std::find(coordinate_systems.begin(), coordinate_systems.end(), system) != coordinate_systems.end();
+	}
 };
 
 // ===== ASTRO ARROW INTEGRATION =====
 class AstroArrowProcessor {
 private:
-    ClientContext &context;
-    unique_ptr<ExpressionExecutor> executor;
-    
+	ClientContext &context;
+	unique_ptr<ExpressionExecutor> executor;
+
 public:
-    AstroArrowProcessor(ClientContext &ctx) : context(ctx) {
-        executor = make_uniq<ExpressionExecutor>(context);
-    }
-    
-    // Process astronomical data chunks (simplified without direct Arrow dependency)
-    bool ProcessAstroChunk(DataChunk &input_chunk, idx_t &count) {
-        count = input_chunk.size();
-        // Process astronomical data without direct Arrow integration
-        // This can be extended when Arrow utilities are properly available
-        return count > 0;
-    }
-    
-    // Convert astronomical coordinates to structured format
-    string ConvertCoordsToStructured(DataChunk &input_chunk) {
-        // Return structured representation of astronomical coordinates
-        std::ostringstream result;
-        result << "{\"chunk_size\":" << input_chunk.size() 
-               << ",\"column_count\":" << input_chunk.ColumnCount()
-               << ",\"format\":\"astronomical_coordinates\"}";
-        return result.str();
-    }
+	AstroArrowProcessor(ClientContext &ctx) : context(ctx) {
+		executor = make_uniq<ExpressionExecutor>(context);
+	}
+
+	// Process astronomical data chunks (simplified without direct Arrow dependency)
+	bool ProcessAstroChunk(DataChunk &input_chunk, idx_t &count) {
+		count = input_chunk.size();
+		// Process astronomical data without direct Arrow integration
+		// This can be extended when Arrow utilities are properly available
+		return count > 0;
+	}
+
+	// Convert astronomical coordinates to structured format
+	string ConvertCoordsToStructured(DataChunk &input_chunk) {
+		// Return structured representation of astronomical coordinates
+		std::ostringstream result;
+		result << "{\"chunk_size\":" << input_chunk.size() << ",\"column_count\":" << input_chunk.ColumnCount()
+		       << ",\"format\":\"astronomical_coordinates\"}";
+		return result.str();
+	}
 };
 
 // ===== ASTRO GEOMETRY INTEGRATION =====
 class AstroGeometryProcessor {
 private:
-    ClientContext &context;
-    unique_ptr<ExpressionExecutor> executor;
-    
+	ClientContext &context;
+	unique_ptr<ExpressionExecutor> executor;
+
 public:
-    AstroGeometryProcessor(ClientContext &ctx) : context(ctx) {
-        executor = make_uniq<ExpressionExecutor>(context);
-        InitializeGeometryFunctions();
-    }
-    
-    void InitializeGeometryFunctions() {
-        // Check if spatial extension is loaded for geometry operations
-        try {
-            auto &catalog = Catalog::GetSystemCatalog(context);
-            auto &geom_func_set = catalog.GetEntry<ScalarFunctionCatalogEntry>(context, DEFAULT_SCHEMA, "st_point");
-            // Spatial extension is available
-        } catch (...) {
-            // Spatial extension not loaded, use basic geometry
-        }
-    }
-    
-    // Create celestial geometry points
-    string CreateCelestialPoint(double ra, double dec, double distance = 1.0) {
-        auto coords = RADecToCartesian(ra, dec, distance);
-        
-        std::ostringstream wkt;
-        wkt << "POINT Z(" << std::fixed << std::setprecision(8) 
-            << coords[0] << " " << coords[1] << " " << coords[2] << ")";
-        return wkt.str();
-    }
-    
-    // Calculate spherical distance on celestial sphere
-    double CelestialDistance(double ra1, double dec1, double ra2, double dec2) {
-        return AngularSeparation(ra1, dec1, ra2, dec2);
-    }
-    
+	AstroGeometryProcessor(ClientContext &ctx) : context(ctx) {
+		executor = make_uniq<ExpressionExecutor>(context);
+		InitializeGeometryFunctions();
+	}
+
+	void InitializeGeometryFunctions() {
+		// Check if spatial extension is loaded for geometry operations
+		try {
+			auto &catalog = Catalog::GetSystemCatalog(context);
+			auto &geom_func_set = catalog.GetEntry<ScalarFunctionCatalogEntry>(context, DEFAULT_SCHEMA, "st_point");
+			// Spatial extension is available
+		} catch (...) {
+			// Spatial extension not loaded, use basic geometry
+		}
+	}
+
+	// Create celestial geometry points
+	string CreateCelestialPoint(double ra, double dec, double distance = 1.0) {
+		auto coords = RADecToCartesian(ra, dec, distance);
+
+		std::ostringstream wkt;
+		wkt << "POINT Z(" << std::fixed << std::setprecision(8) << coords[0] << " " << coords[1] << " " << coords[2]
+		    << ")";
+		return wkt.str();
+	}
+
+	// Calculate spherical distance on celestial sphere
+	double CelestialDistance(double ra1, double dec1, double ra2, double dec2) {
+		return AngularSeparation(ra1, dec1, ra2, dec2);
+	}
+
 private:
-    std::vector<double> RADecToCartesian(double ra_deg, double dec_deg, double distance = 1.0) {
-        double ra_rad = ra_deg * M_PI / 180.0;
-        double dec_rad = dec_deg * M_PI / 180.0;
-        
-        double x = distance * cos(dec_rad) * cos(ra_rad);
-        double y = distance * cos(dec_rad) * sin(ra_rad);
-        double z = distance * sin(dec_rad);
-        
-        return {x, y, z};
-    }
-    
-    double AngularSeparation(double ra1_deg, double dec1_deg, double ra2_deg, double dec2_deg) {
-        double ra1 = ra1_deg * M_PI / 180.0;
-        double dec1 = dec1_deg * M_PI / 180.0;
-        double ra2 = ra2_deg * M_PI / 180.0;
-        double dec2 = dec2_deg * M_PI / 180.0;
-        
-        double dra = ra2 - ra1;
-        double ddec = dec2 - dec1;
-        
-        double a = sin(ddec/2) * sin(ddec/2) + 
-                   cos(dec1) * cos(dec2) * sin(dra/2) * sin(dra/2);
-        double c = 2 * atan2(sqrt(a), sqrt(1-a));
-        
-        return c * 180.0 / M_PI;
-    }
+	std::vector<double> RADecToCartesian(double ra_deg, double dec_deg, double distance = 1.0) {
+		double ra_rad = ra_deg * M_PI / 180.0;
+		double dec_rad = dec_deg * M_PI / 180.0;
+
+		double x = distance * cos(dec_rad) * cos(ra_rad);
+		double y = distance * cos(dec_rad) * sin(ra_rad);
+		double z = distance * sin(dec_rad);
+
+		return {x, y, z};
+	}
+
+	double AngularSeparation(double ra1_deg, double dec1_deg, double ra2_deg, double dec2_deg) {
+		double ra1 = ra1_deg * M_PI / 180.0;
+		double dec1 = dec1_deg * M_PI / 180.0;
+		double ra2 = ra2_deg * M_PI / 180.0;
+		double dec2 = dec2_deg * M_PI / 180.0;
+
+		double dra = ra2 - ra1;
+		double ddec = dec2 - dec1;
+
+		double a = sin(ddec / 2) * sin(ddec / 2) + cos(dec1) * cos(dec2) * sin(dra / 2) * sin(dra / 2);
+		double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+		return c * 180.0 / M_PI;
+	}
 };
 
 // ===== COORDINATE CONVERSION FUNCTIONS =====
 std::vector<double> RADecToCartesian(double ra_deg, double dec_deg, double distance = 1.0) {
-    double ra_rad = ra_deg * M_PI / 180.0;
-    double dec_rad = dec_deg * M_PI / 180.0;
-    
-    double x = distance * cos(dec_rad) * cos(ra_rad);
-    double y = distance * cos(dec_rad) * sin(ra_rad);
-    double z = distance * sin(dec_rad);
-    
-    return {x, y, z};
+	double ra_rad = ra_deg * M_PI / 180.0;
+	double dec_rad = dec_deg * M_PI / 180.0;
+
+	double x = distance * cos(dec_rad) * cos(ra_rad);
+	double y = distance * cos(dec_rad) * sin(ra_rad);
+	double z = distance * sin(dec_rad);
+
+	return {x, y, z};
 }
 
 double AngularSeparation(double ra1_deg, double dec1_deg, double ra2_deg, double dec2_deg) {
-    double ra1 = ra1_deg * M_PI / 180.0;
-    double dec1 = dec1_deg * M_PI / 180.0;
-    double ra2 = ra2_deg * M_PI / 180.0;
-    double dec2 = dec2_deg * M_PI / 180.0;
-    
-    double dra = ra2 - ra1;
-    double ddec = dec2 - dec1;
-    
-    double a = sin(ddec/2) * sin(ddec/2) + 
-               cos(dec1) * cos(dec2) * sin(dra/2) * sin(dra/2);
-    double c = 2 * atan2(sqrt(a), sqrt(1-a));
-    
-    return c * 180.0 / M_PI;
+	double ra1 = ra1_deg * M_PI / 180.0;
+	double dec1 = dec1_deg * M_PI / 180.0;
+	double ra2 = ra2_deg * M_PI / 180.0;
+	double dec2 = dec2_deg * M_PI / 180.0;
+
+	double dra = ra2 - ra1;
+	double ddec = dec2 - dec1;
+
+	double a = sin(ddec / 2) * sin(ddec / 2) + cos(dec1) * cos(dec2) * sin(dra / 2) * sin(dra / 2);
+	double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+	return c * 180.0 / M_PI;
 }
 
 // ===== PHOTOMETRIC FUNCTIONS =====
 double MagnitudeToFlux(double magnitude, double zero_point = 0.0) {
-    return pow(10.0, -(magnitude - zero_point) / 2.5);
+	return pow(10.0, -(magnitude - zero_point) / 2.5);
 }
 
 double FluxToMagnitude(double flux, double zero_point = 0.0) {
-    if (flux <= 0) return std::numeric_limits<double>::quiet_NaN();
-    return -2.5 * log10(flux) + zero_point;
+	if (flux <= 0)
+		return std::numeric_limits<double>::quiet_NaN();
+	return -2.5 * log10(flux) + zero_point;
 }
 
 double DistanceModulus(double distance_pc) {
-    if (distance_pc <= 0) return std::numeric_limits<double>::quiet_NaN();
-    return 5.0 * log10(distance_pc) - 5.0;
+	if (distance_pc <= 0)
+		return std::numeric_limits<double>::quiet_NaN();
+	return 5.0 * log10(distance_pc) - 5.0;
 }
 
 // ===== COSMOLOGICAL FUNCTIONS =====
 double LuminosityDistance(double redshift, double h0 = HUBBLE_CONSTANT) {
-    double c_km_s = SPEED_OF_LIGHT / 1000.0;
-    return (c_km_s * redshift) / h0;
+	double c_km_s = SPEED_OF_LIGHT / 1000.0;
+	return (c_km_s * redshift) / h0;
 }
 
 double ComovingDistance(double redshift, double h0 = HUBBLE_CONSTANT) {
-    return LuminosityDistance(redshift, h0) / (1.0 + redshift);
+	return LuminosityDistance(redshift, h0) / (1.0 + redshift);
 }
 
 // ===== ENHANCED ASTRO FUNCTIONS WITH INTEGRATION =====
 
 // Enhanced coordinate conversion with geometry support
 static void AstroRADecToCartesianFunction(DataChunk &args, ExpressionState &state, Vector &result) {
-    auto &ra_vector = args.data[0];
-    auto &dec_vector = args.data[1];
-    auto &distance_vector = args.data[2];
-    
-    TernaryExecutor::Execute<double, double, double, string_t>(
-        ra_vector, dec_vector, distance_vector, result, args.size(),
-        [&](double ra, double dec, double distance) {
-            auto coords = RADecToCartesian(ra, dec, distance);
-            
-            // Enhanced JSON output with additional metadata
-            std::ostringstream json_result;
-            json_result << "{\"x\":" << std::fixed << std::setprecision(8) << coords[0]
-                       << ",\"y\":" << coords[1] 
-                       << ",\"z\":" << coords[2]
-                       << ",\"ra\":" << ra
-                       << ",\"dec\":" << dec
-                       << ",\"distance\":" << distance
-                       << ",\"coordinate_system\":\"ICRS\""
-                       << ",\"epoch\":2000.0}";
-            
-            return StringVector::AddString(result, json_result.str());
-        });
+	auto &ra_vector = args.data[0];
+	auto &dec_vector = args.data[1];
+	auto &distance_vector = args.data[2];
+
+	TernaryExecutor::Execute<double, double, double, string_t>(
+	    ra_vector, dec_vector, distance_vector, result, args.size(), [&](double ra, double dec, double distance) {
+		    auto coords = RADecToCartesian(ra, dec, distance);
+
+		    // Enhanced JSON output with additional metadata
+		    std::ostringstream json_result;
+		    json_result << "{\"x\":" << std::fixed << std::setprecision(8) << coords[0] << ",\"y\":" << coords[1]
+		                << ",\"z\":" << coords[2] << ",\"ra\":" << ra << ",\"dec\":" << dec
+		                << ",\"distance\":" << distance << ",\"coordinate_system\":\"ICRS\""
+		                << ",\"epoch\":2000.0}";
+
+		    return StringVector::AddString(result, json_result.str());
+	    });
 }
 
 // Enhanced angular separation with metadata
 static void AstroAngularSeparationFunction(DataChunk &args, ExpressionState &state, Vector &result) {
-    auto &ra1_vector = args.data[0];
-    auto &dec1_vector = args.data[1];
-    auto &ra2_vector = args.data[2];
-    auto &dec2_vector = args.data[3];
-    
-    UnifiedVectorFormat ra1_data, dec1_data, ra2_data, dec2_data;
-    ra1_vector.ToUnifiedFormat(args.size(), ra1_data);
-    dec1_vector.ToUnifiedFormat(args.size(), dec1_data);
-    ra2_vector.ToUnifiedFormat(args.size(), ra2_data);
-    dec2_vector.ToUnifiedFormat(args.size(), dec2_data);
-    
-    auto ra1_ptr = UnifiedVectorFormat::GetData<double>(ra1_data);
-    auto dec1_ptr = UnifiedVectorFormat::GetData<double>(dec1_data);
-    auto ra2_ptr = UnifiedVectorFormat::GetData<double>(ra2_data);
-    auto dec2_ptr = UnifiedVectorFormat::GetData<double>(dec2_data);
-    auto result_data = FlatVector::GetData<double>(result);
-    
-    for (idx_t i = 0; i < args.size(); i++) {
-        auto ra1_idx = ra1_data.sel->get_index(i);
-        auto dec1_idx = dec1_data.sel->get_index(i);
-        auto ra2_idx = ra2_data.sel->get_index(i);
-        auto dec2_idx = dec2_data.sel->get_index(i);
-        
-        if (!ra1_data.validity.RowIsValid(ra1_idx) || !dec1_data.validity.RowIsValid(dec1_idx) ||
-            !ra2_data.validity.RowIsValid(ra2_idx) || !dec2_data.validity.RowIsValid(dec2_idx)) {
-            FlatVector::SetNull(result, i, true);
-            continue;
-        }
-        
-        result_data[i] = AngularSeparation(ra1_ptr[ra1_idx], dec1_ptr[dec1_idx], 
-                                         ra2_ptr[ra2_idx], dec2_ptr[dec2_idx]);
-    }
+	auto &ra1_vector = args.data[0];
+	auto &dec1_vector = args.data[1];
+	auto &ra2_vector = args.data[2];
+	auto &dec2_vector = args.data[3];
+
+	UnifiedVectorFormat ra1_data, dec1_data, ra2_data, dec2_data;
+	ra1_vector.ToUnifiedFormat(args.size(), ra1_data);
+	dec1_vector.ToUnifiedFormat(args.size(), dec1_data);
+	ra2_vector.ToUnifiedFormat(args.size(), ra2_data);
+	dec2_vector.ToUnifiedFormat(args.size(), dec2_data);
+
+	auto ra1_ptr = UnifiedVectorFormat::GetData<double>(ra1_data);
+	auto dec1_ptr = UnifiedVectorFormat::GetData<double>(dec1_data);
+	auto ra2_ptr = UnifiedVectorFormat::GetData<double>(ra2_data);
+	auto dec2_ptr = UnifiedVectorFormat::GetData<double>(dec2_data);
+	auto result_data = FlatVector::GetData<double>(result);
+
+	for (idx_t i = 0; i < args.size(); i++) {
+		auto ra1_idx = ra1_data.sel->get_index(i);
+		auto dec1_idx = dec1_data.sel->get_index(i);
+		auto ra2_idx = ra2_data.sel->get_index(i);
+		auto dec2_idx = dec2_data.sel->get_index(i);
+
+		if (!ra1_data.validity.RowIsValid(ra1_idx) || !dec1_data.validity.RowIsValid(dec1_idx) ||
+		    !ra2_data.validity.RowIsValid(ra2_idx) || !dec2_data.validity.RowIsValid(dec2_idx)) {
+			FlatVector::SetNull(result, i, true);
+			continue;
+		}
+
+		result_data[i] = AngularSeparation(ra1_ptr[ra1_idx], dec1_ptr[dec1_idx], ra2_ptr[ra2_idx], dec2_ptr[dec2_idx]);
+	}
 }
 
 // Create celestial geometry point
 static void AstroCelestialPointFunction(DataChunk &args, ExpressionState &state, Vector &result) {
-    auto &ra_vector = args.data[0];
-    auto &dec_vector = args.data[1];
-    auto &distance_vector = args.data[2];
-    
-    TernaryExecutor::Execute<double, double, double, string_t>(
-        ra_vector, dec_vector, distance_vector, result, args.size(),
-        [&](double ra, double dec, double distance) {
-            auto coords = RADecToCartesian(ra, dec, distance);
-            
-            std::ostringstream wkt;
-            wkt << "POINT Z(" << std::fixed << std::setprecision(8) 
-                << coords[0] << " " << coords[1] << " " << coords[2] << ")";
-            
-            return StringVector::AddString(result, wkt.str());
-        });
+	auto &ra_vector = args.data[0];
+	auto &dec_vector = args.data[1];
+	auto &distance_vector = args.data[2];
+
+	TernaryExecutor::Execute<double, double, double, string_t>(
+	    ra_vector, dec_vector, distance_vector, result, args.size(), [&](double ra, double dec, double distance) {
+		    auto coords = RADecToCartesian(ra, dec, distance);
+
+		    std::ostringstream wkt;
+		    wkt << "POINT Z(" << std::fixed << std::setprecision(8) << coords[0] << " " << coords[1] << " " << coords[2]
+		        << ")";
+
+		    return StringVector::AddString(result, wkt.str());
+	    });
 }
 
 // Catalog metadata function
 static void AstroCatalogInfoFunction(DataChunk &args, ExpressionState &state, Vector &result) {
-    auto &catalog_name_vector = args.data[0];
-    
-    UnaryExecutor::Execute<string_t, string_t>(
-        catalog_name_vector, result, args.size(),
-        [&](string_t catalog_name) {
-            string catalog_str = catalog_name.GetString();
-            
-            std::ostringstream info;
-            info << "{\"catalog\":\"" << catalog_str << "\""
-                 << ",\"version\":\"1.0.0\""
-                 << ",\"coordinate_system\":\"ICRS\""
-                 << ",\"epoch\":2000.0"
-                 << ",\"supported_functions\":[\"angular_separation\",\"radec_to_cartesian\",\"mag_to_flux\",\"distance_modulus\",\"luminosity_distance\",\"redshift_to_age\"]"
-                 << ",\"extensions\":[\"arrow\",\"spatial\",\"parquet\"]}";
-            
-            return StringVector::AddString(result, info.str());
-        });
+	auto &catalog_name_vector = args.data[0];
+
+	UnaryExecutor::Execute<string_t, string_t>(catalog_name_vector, result, args.size(), [&](string_t catalog_name) {
+		string catalog_str = catalog_name.GetString();
+
+		std::ostringstream info;
+		info << "{\"catalog\":\"" << catalog_str << "\""
+		     << ",\"version\":\"1.0.0\""
+		     << ",\"coordinate_system\":\"ICRS\""
+		     << ",\"epoch\":2000.0"
+		     << ",\"supported_functions\":[\"angular_separation\",\"radec_to_cartesian\",\"mag_to_flux\",\"distance_"
+		        "modulus\",\"luminosity_distance\",\"redshift_to_age\"]"
+		     << ",\"extensions\":[\"arrow\",\"spatial\",\"parquet\"]}";
+
+		return StringVector::AddString(result, info.str());
+	});
 }
 
 // Enhanced photometric functions
 static void AstroMagToFluxFunction(DataChunk &args, ExpressionState &state, Vector &result) {
-    auto &mag_vector = args.data[0];
-    auto &zp_vector = args.data[1];
-    
-    BinaryExecutor::Execute<double, double, double>(
-        mag_vector, zp_vector, result, args.size(),
-        [&](double magnitude, double zero_point) {
-            return MagnitudeToFlux(magnitude, zero_point);
-        });
+	auto &mag_vector = args.data[0];
+	auto &zp_vector = args.data[1];
+
+	BinaryExecutor::Execute<double, double, double>(
+	    mag_vector, zp_vector, result, args.size(),
+	    [&](double magnitude, double zero_point) { return MagnitudeToFlux(magnitude, zero_point); });
 }
 
 static void AstroDistanceModulusFunction(DataChunk &args, ExpressionState &state, Vector &result) {
-    auto &distance_vector = args.data[0];
-    
-    UnifiedVectorFormat distance_data;
-    distance_vector.ToUnifiedFormat(args.size(), distance_data);
-    
-    auto distance_ptr = UnifiedVectorFormat::GetData<double>(distance_data);
-    auto result_data = FlatVector::GetData<double>(result);
-    
-    for (idx_t i = 0; i < args.size(); i++) {
-        auto distance_idx = distance_data.sel->get_index(i);
-        
-        if (!distance_data.validity.RowIsValid(distance_idx)) {
-            FlatVector::SetNull(result, i, true);
-            continue;
-        }
-        
-        double distance_pc = distance_ptr[distance_idx];
-        if (distance_pc <= 0) {
-            FlatVector::SetNull(result, i, true);
-        } else {
-            result_data[i] = DistanceModulus(distance_pc);
-        }
-    }
+	auto &distance_vector = args.data[0];
+
+	UnifiedVectorFormat distance_data;
+	distance_vector.ToUnifiedFormat(args.size(), distance_data);
+
+	auto distance_ptr = UnifiedVectorFormat::GetData<double>(distance_data);
+	auto result_data = FlatVector::GetData<double>(result);
+
+	for (idx_t i = 0; i < args.size(); i++) {
+		auto distance_idx = distance_data.sel->get_index(i);
+
+		if (!distance_data.validity.RowIsValid(distance_idx)) {
+			FlatVector::SetNull(result, i, true);
+			continue;
+		}
+
+		double distance_pc = distance_ptr[distance_idx];
+		if (distance_pc <= 0) {
+			FlatVector::SetNull(result, i, true);
+		} else {
+			result_data[i] = DistanceModulus(distance_pc);
+		}
+	}
 }
 
 static void AstroLuminosityDistanceFunction(DataChunk &args, ExpressionState &state, Vector &result) {
-    auto &redshift_vector = args.data[0];
-    auto &h0_vector = args.data[1];
-    
-    BinaryExecutor::Execute<double, double, double>(
-        redshift_vector, h0_vector, result, args.size(),
-        [&](double redshift, double h0) {
-            return LuminosityDistance(redshift, h0);
-        });
+	auto &redshift_vector = args.data[0];
+	auto &h0_vector = args.data[1];
+
+	BinaryExecutor::Execute<double, double, double>(
+	    redshift_vector, h0_vector, result, args.size(),
+	    [&](double redshift, double h0) { return LuminosityDistance(redshift, h0); });
 }
 
 static void AstroRedshiftToAgeFunction(DataChunk &args, ExpressionState &state, Vector &result) {
-    auto &redshift_vector = args.data[0];
-    
-    UnaryExecutor::Execute<double, double>(
-        redshift_vector, result, args.size(),
-        [&](double redshift) {
-            double h0_s = HUBBLE_CONSTANT * 1000.0 / (1e6 * PARSEC_TO_METERS);
-            double hubble_time = 1.0 / h0_s / (365.25 * 24 * 3600 * 1e9);
-            return hubble_time / (1.0 + redshift);
-        });
+	auto &redshift_vector = args.data[0];
+
+	UnaryExecutor::Execute<double, double>(redshift_vector, result, args.size(), [&](double redshift) {
+		double h0_s = HUBBLE_CONSTANT * 1000.0 / (1e6 * PARSEC_TO_METERS);
+		double hubble_time = 1.0 / h0_s / (365.25 * 24 * 3600 * 1e9);
+		return hubble_time / (1.0 + redshift);
+	});
 }
 
 // ===== EXTENSION REGISTRATION =====
 static void LoadInternal(DatabaseInstance &instance) {
-    // Enhanced coordinate conversion with geometry support
-    auto radec_to_cartesian = ScalarFunction("radec_to_cartesian", 
-        {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE}, 
-        LogicalType::VARCHAR, 
-        AstroRADecToCartesianFunction);
-    ExtensionUtil::RegisterFunction(instance, radec_to_cartesian);
-    
-    // Angular separation
-    auto angular_separation = ScalarFunction("angular_separation", 
-        {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE}, 
-        LogicalType::DOUBLE, 
-        AstroAngularSeparationFunction);
-    ExtensionUtil::RegisterFunction(instance, angular_separation);
-    
-    // Celestial geometry point creation
-    auto celestial_point = ScalarFunction("celestial_point", 
-        {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE}, 
-        LogicalType::VARCHAR, 
-        AstroCelestialPointFunction);
-    ExtensionUtil::RegisterFunction(instance, celestial_point);
-    
-    // Catalog metadata
-    auto catalog_info = ScalarFunction("catalog_info", 
-        {LogicalType::VARCHAR}, 
-        LogicalType::VARCHAR, 
-        AstroCatalogInfoFunction);
-    ExtensionUtil::RegisterFunction(instance, catalog_info);
-    
-    // Photometric functions
-    auto mag_to_flux = ScalarFunction("mag_to_flux", 
-        {LogicalType::DOUBLE, LogicalType::DOUBLE}, 
-        LogicalType::DOUBLE, 
-        AstroMagToFluxFunction);
-    ExtensionUtil::RegisterFunction(instance, mag_to_flux);
-    
-    auto distance_modulus = ScalarFunction("distance_modulus", 
-        {LogicalType::DOUBLE}, 
-        LogicalType::DOUBLE, 
-        AstroDistanceModulusFunction);
-    ExtensionUtil::RegisterFunction(instance, distance_modulus);
-    
-    // Cosmological functions
-    auto luminosity_distance = ScalarFunction("luminosity_distance", 
-        {LogicalType::DOUBLE, LogicalType::DOUBLE}, 
-        LogicalType::DOUBLE, 
-        AstroLuminosityDistanceFunction);
-    ExtensionUtil::RegisterFunction(instance, luminosity_distance);
-    
-    auto redshift_to_age = ScalarFunction("redshift_to_age", 
-        {LogicalType::DOUBLE}, 
-        LogicalType::DOUBLE, 
-        AstroRedshiftToAgeFunction);
-    ExtensionUtil::RegisterFunction(instance, redshift_to_age);
+	// Enhanced coordinate conversion with geometry support
+	auto radec_to_cartesian =
+	    ScalarFunction("radec_to_cartesian", {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE},
+	                   LogicalType::VARCHAR, AstroRADecToCartesianFunction);
+	ExtensionUtil::RegisterFunction(instance, radec_to_cartesian);
+
+	// Angular separation
+	auto angular_separation = ScalarFunction(
+	    "angular_separation", {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE},
+	    LogicalType::DOUBLE, AstroAngularSeparationFunction);
+	ExtensionUtil::RegisterFunction(instance, angular_separation);
+
+	// Celestial geometry point creation
+	auto celestial_point =
+	    ScalarFunction("celestial_point", {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE},
+	                   LogicalType::VARCHAR, AstroCelestialPointFunction);
+	ExtensionUtil::RegisterFunction(instance, celestial_point);
+
+	// Catalog metadata
+	auto catalog_info =
+	    ScalarFunction("catalog_info", {LogicalType::VARCHAR}, LogicalType::VARCHAR, AstroCatalogInfoFunction);
+	ExtensionUtil::RegisterFunction(instance, catalog_info);
+
+	// Photometric functions
+	auto mag_to_flux = ScalarFunction("mag_to_flux", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE,
+	                                  AstroMagToFluxFunction);
+	ExtensionUtil::RegisterFunction(instance, mag_to_flux);
+
+	auto distance_modulus =
+	    ScalarFunction("distance_modulus", {LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroDistanceModulusFunction);
+	ExtensionUtil::RegisterFunction(instance, distance_modulus);
+
+	// Cosmological functions
+	auto luminosity_distance = ScalarFunction("luminosity_distance", {LogicalType::DOUBLE, LogicalType::DOUBLE},
+	                                          LogicalType::DOUBLE, AstroLuminosityDistanceFunction);
+	ExtensionUtil::RegisterFunction(instance, luminosity_distance);
+
+	auto redshift_to_age =
+	    ScalarFunction("redshift_to_age", {LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroRedshiftToAgeFunction);
+	ExtensionUtil::RegisterFunction(instance, redshift_to_age);
 }
 
 void AstroExtension::Load(DuckDB &db) {
-    LoadInternal(*db.instance);
+	LoadInternal(*db.instance);
 }
 
 std::string AstroExtension::Name() {
-    return "astro";
+	return "astro";
 }
 
 std::string AstroExtension::Version() const {
 #ifdef EXT_VERSION_ASTRO
-    return EXT_VERSION_ASTRO;
+	return EXT_VERSION_ASTRO;
 #else
-    return "2.0.0";
+	return "2.0.0";
 #endif
 }
 
@@ -455,15 +427,14 @@ std::string AstroExtension::Version() const {
 extern "C" {
 
 DUCKDB_EXTENSION_API void astro_init(duckdb::DatabaseInstance &db) {
-    LoadInternal(db);
+	LoadInternal(db);
 }
 
 DUCKDB_EXTENSION_API const char *astro_version() {
-    return duckdb::DuckDB::LibraryVersion();
+	return duckdb::DuckDB::LibraryVersion();
 }
-
 }
 
 #ifndef DUCKDB_EXTENSION_MAIN
 #error DUCKDB_EXTENSION_MAIN not defined
-#endif 
+#endif
