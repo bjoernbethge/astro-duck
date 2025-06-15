@@ -11,44 +11,328 @@ Catalog Error: Scalar Function with name angular_separation does not exist!
 # Require statement will ensure this test is run with this extension loaded
 require astro
 
-# Confirm the extension works - Angular separation calculation
+# Test 1: Angular separation calculation
 query I
 SELECT angular_separation(45.0, 30.0, 46.0, 31.0) > 0;
 ----
 true
 
-# Test coordinate conversion
+# Test 2: Angular separation - same point should be 0
+query I
+SELECT angular_separation(45.0, 30.0, 45.0, 30.0) = 0;
+----
+true
+
+# Test 3: Coordinate conversion to cartesian
 query I
 SELECT radec_to_cartesian(45.0, 30.0, 10.0) LIKE '%"x":%';
 ----
 true
 
-# Test magnitude to flux conversion
+# Test 4: Coordinate conversion - check JSON structure
+query I
+SELECT radec_to_cartesian(0.0, 0.0, 1.0) LIKE '%"coordinate_system":"ICRS"%';
+----
+true
+
+# Test 5: Magnitude to flux conversion
 query I
 SELECT mag_to_flux(15.5, 25.0) > 0;
 ----
 true
 
-# Test distance modulus
+# Test 6: Magnitude to flux - brighter magnitude should give higher flux
+query I
+SELECT mag_to_flux(10.0, 25.0) > mag_to_flux(15.0, 25.0);
+----
+true
+
+# Test 7: Distance modulus
 query I
 SELECT distance_modulus(1000.0) > 0;
 ----
 true
 
-# Test luminosity distance
+# Test 8: Distance modulus - closer objects should have smaller modulus
+query I
+SELECT distance_modulus(100.0) < distance_modulus(1000.0);
+----
+true
+
+# Test 9: Luminosity distance
 query I
 SELECT luminosity_distance(0.1, 70.0) > 0;
 ----
 true
 
-# Test redshift to age
+# Test 10: Luminosity distance - higher redshift should give larger distance
+query I
+SELECT luminosity_distance(0.1, 70.0) < luminosity_distance(0.5, 70.0);
+----
+true
+
+# Test 11: Redshift to age
 query I
 SELECT redshift_to_age(0.5) > 0;
 ----
 true
 
-# Test catalog info
+# Test 12: Redshift to age - higher redshift should give younger universe age
+query I
+SELECT redshift_to_age(1.0) < redshift_to_age(0.5);
+----
+true
+
+# Test 13: Celestial point creation
+query I
+SELECT celestial_point(45.0, 30.0, 10.0) LIKE 'POINT Z(%';
+----
+true
+
+# Test 14: Celestial point - different coordinates should give different points
+query I
+SELECT celestial_point(45.0, 30.0, 10.0) != celestial_point(90.0, 60.0, 10.0);
+----
+true
+
+# Test 15: Catalog info
 query I
 SELECT catalog_info('test') LIKE '%"version":%';
 ----
 true
+
+# Test 16: Catalog info - check for supported functions
+query I
+SELECT catalog_info('astro_catalog') LIKE '%"supported_functions":%';
+----
+true
+
+# Test 17: Batch processing test
+query I
+SELECT COUNT(*) FROM (
+    SELECT angular_separation(ra, dec, ra+1, dec+1) as sep
+    FROM (VALUES (0.0, 0.0), (45.0, 30.0), (90.0, 60.0), (180.0, -30.0)) AS coords(ra, dec)
+) WHERE sep > 0;
+----
+4
+
+# Test 18: Edge case - poles (account for floating point precision)
+query I
+SELECT angular_separation(0.0, 90.0, 180.0, 90.0) < 1e-10;
+----
+true
+
+# Test 19: Edge case - antipodal points
+query I
+SELECT angular_separation(0.0, 0.0, 180.0, 0.0) = 180.0;
+----
+true
+
+# Test 20: NULL value handling - angular_separation
+query I
+SELECT angular_separation(NULL, 30.0, 46.0, 31.0) IS NULL;
+----
+true
+
+# Test 21: NULL value handling - radec_to_cartesian
+query I
+SELECT radec_to_cartesian(NULL, 30.0, 10.0) IS NULL;
+----
+true
+
+# Test 22: NULL value handling - mag_to_flux
+query I
+SELECT mag_to_flux(NULL, 25.0) IS NULL;
+----
+true
+
+# Test 23: NULL value handling - distance_modulus
+query I
+SELECT distance_modulus(NULL) IS NULL;
+----
+true
+
+# Test 24: NULL value handling - luminosity_distance
+query I
+SELECT luminosity_distance(NULL, 70.0) IS NULL;
+----
+true
+
+# Test 25: NULL value handling - redshift_to_age
+query I
+SELECT redshift_to_age(NULL) IS NULL;
+----
+true
+
+# Test 26: NULL value handling - celestial_point
+query I
+SELECT celestial_point(NULL, 30.0, 10.0) IS NULL;
+----
+true
+
+# Test 27: NULL value handling - catalog_info
+query I
+SELECT catalog_info(NULL) IS NULL;
+----
+true
+
+# Test 28: Error handling - distance_modulus with negative distance
+query I
+SELECT distance_modulus(-100.0) IS NULL;
+----
+true
+
+# Test 29: Error handling - distance_modulus with zero distance
+query I
+SELECT distance_modulus(0.0) IS NULL;
+----
+true
+
+# Test 30: Coordinate conversion - verify epoch metadata
+query I
+SELECT radec_to_cartesian(0.0, 0.0, 1.0) LIKE '%"epoch":2000.0%';
+----
+true
+
+# Test 31: Coordinate conversion - verify distance metadata
+query I
+SELECT radec_to_cartesian(45.0, 30.0, 5.5) LIKE '%"distance":5.5%';
+----
+true
+
+# Test 32: Celestial point - verify precision
+query I
+SELECT celestial_point(0.0, 0.0, 1.0) = 'POINT Z(1.00000000 0.00000000 0.00000000)';
+----
+true
+
+# Test 33: Catalog info - verify extensions array
+query I
+SELECT catalog_info('test') LIKE '%"extensions":[%"arrow"%';
+----
+true
+
+# Test 34: Catalog info - verify coordinate system
+query I
+SELECT catalog_info('survey') LIKE '%"coordinate_system":"ICRS"%';
+----
+true
+
+# Test 35: Angular separation - extreme coordinates
+query I
+SELECT angular_separation(-180.0, -90.0, 180.0, 90.0) = 180.0;
+----
+true
+
+# Test 36: Magnitude to flux - zero point effect
+query I
+SELECT mag_to_flux(15.0, 0.0) != mag_to_flux(15.0, 25.0);
+----
+true
+
+# Test 37: Luminosity distance - different Hubble constants
+query I
+SELECT luminosity_distance(0.1, 50.0) > luminosity_distance(0.1, 100.0);
+----
+true
+
+# Test 38: Redshift to age - very small redshift
+query I
+SELECT redshift_to_age(0.001) > redshift_to_age(0.1);
+----
+true
+
+# Test 39: Coordinate conversion - negative coordinates
+query I
+SELECT radec_to_cartesian(-45.0, -30.0, 1.0) LIKE '%"ra":-45%';
+----
+true
+
+# Test 40: Celestial point - negative coordinates
+query I
+SELECT celestial_point(-90.0, -45.0, 2.0) LIKE 'POINT Z(%';
+----
+true
+
+# Test 41: Batch processing - verify all functions work together
+query I
+SELECT COUNT(*) FROM (
+    SELECT 
+        angular_separation(ra, dec, 0, 0) as sep,
+        mag_to_flux(mag, 25.0) as flux,
+        distance_modulus(dist) as dm
+    FROM (VALUES 
+        (0.0, 0.0, 15.0, 100.0),
+        (45.0, 30.0, 12.5, 500.0),
+        (90.0, -45.0, 18.2, 1000.0)
+    ) AS data(ra, dec, mag, dist)
+) WHERE sep >= 0 AND flux > 0 AND dm > 0;
+----
+3
+
+# Test 42: Coordinate conversion - large distance values
+query I
+SELECT radec_to_cartesian(0.0, 0.0, 1000000.0) LIKE '%"distance":1000000%';
+----
+true
+
+# Test 43: Angular separation - very small separations
+query I
+SELECT angular_separation(0.0, 0.0, 0.001, 0.001) > 0;
+----
+true
+
+# Test 44: Catalog info - different catalog names
+query I
+SELECT catalog_info('gaia') != catalog_info('hipparcos');
+----
+true
+
+# Test 45: Magnitude to flux - extreme magnitudes
+query I
+SELECT mag_to_flux(30.0, 25.0) < mag_to_flux(5.0, 25.0);
+----
+true
+
+# Test 46: Distance modulus - very large distances
+query I
+SELECT distance_modulus(1000000.0) > distance_modulus(1000.0);
+----
+true
+
+# Test 47: Luminosity distance - high redshift
+query I
+SELECT luminosity_distance(5.0, 70.0) > luminosity_distance(1.0, 70.0);
+----
+true
+
+# Test 48: Redshift to age - high redshift gives young age
+query I
+SELECT redshift_to_age(10.0) < redshift_to_age(1.0);
+----
+true
+
+# Test 49: Celestial point - verify Z coordinate for pole
+query I
+SELECT celestial_point(0.0, 90.0, 1.0) LIKE '%0.00000000 0.00000000 1.00000000%';
+----
+true
+
+# Test 50: Complete integration test - realistic astronomical scenario
+query I
+SELECT COUNT(*) FROM (
+    SELECT 
+        star_name,
+        angular_separation(ra, dec, 266.417, -29.008) as sep_from_sgr_a,
+        mag_to_flux(v_mag, 0.0) as v_flux,
+        distance_modulus(distance_pc) as dist_mod,
+        celestial_point(ra, dec, distance_pc) as geometry
+    FROM (VALUES 
+        ('Vega', 279.234, 38.784, 25.04, 7.68),
+        ('Sirius', 101.287, -16.716, 2.64, -1.46),
+        ('Betelgeuse', 88.793, 7.407, 168.1, 0.50),
+        ('Rigel', 78.634, -8.202, 264.6, 0.13)
+    ) AS stars(star_name, ra, dec, distance_pc, v_mag)
+) WHERE sep_from_sgr_a > 0 AND v_flux > 0 AND dist_mod IS NOT NULL AND geometry LIKE 'POINT Z(%';
+----
+4

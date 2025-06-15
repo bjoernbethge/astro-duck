@@ -30,6 +30,11 @@
 #include <unordered_map>
 #include <memory>
 
+// Define M_PI for Windows compatibility
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 namespace duckdb {
 
 // ===== ASTRONOMICAL CONSTANTS =====
@@ -326,11 +331,27 @@ static void AstroMagToFluxFunction(DataChunk &args, ExpressionState &state, Vect
 static void AstroDistanceModulusFunction(DataChunk &args, ExpressionState &state, Vector &result) {
     auto &distance_vector = args.data[0];
     
-    UnaryExecutor::Execute<double, double>(
-        distance_vector, result, args.size(),
-        [&](double distance_pc) {
-            return DistanceModulus(distance_pc);
-        });
+    UnifiedVectorFormat distance_data;
+    distance_vector.ToUnifiedFormat(args.size(), distance_data);
+    
+    auto distance_ptr = UnifiedVectorFormat::GetData<double>(distance_data);
+    auto result_data = FlatVector::GetData<double>(result);
+    
+    for (idx_t i = 0; i < args.size(); i++) {
+        auto distance_idx = distance_data.sel->get_index(i);
+        
+        if (!distance_data.validity.RowIsValid(distance_idx)) {
+            FlatVector::SetNull(result, i, true);
+            continue;
+        }
+        
+        double distance_pc = distance_ptr[distance_idx];
+        if (distance_pc <= 0) {
+            FlatVector::SetNull(result, i, true);
+        } else {
+            result_data[i] = DistanceModulus(distance_pc);
+        }
+    }
 }
 
 static void AstroLuminosityDistanceFunction(DataChunk &args, ExpressionState &state, Vector &result) {
