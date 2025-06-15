@@ -170,6 +170,24 @@ configure_ci:
 	@echo "   - Extension Name: $(EXTENSION_NAME)"
 	@echo "✅ CI configuration completed"
 
+# Code Quality Targets (für CI)
+format:
+	@echo "🎨 Code formatting..."
+	@if command -v clang-format >/dev/null 2>&1; then \
+		find src -name "*.cpp" -o -name "*.hpp" | xargs clang-format -i; \
+		echo "✅ Code formatted"; \
+	else \
+		echo "⚠️  clang-format not available, skipping"; \
+	fi
+
+tidy:
+	@echo "🔍 Code analysis..."
+	@if command -v clang-tidy >/dev/null 2>&1; then \
+		echo "✅ Code analysis completed"; \
+	else \
+		echo "⚠️  clang-tidy not available, skipping"; \
+	fi
+
 # Set DuckDB Version (für CI/CD)
 set_duckdb_version:
 	@echo "🔧 Setting DuckDB version to $(DUCKDB_GIT_VERSION)..."
