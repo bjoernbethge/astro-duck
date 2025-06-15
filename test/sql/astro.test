@@ -1,0 +1,54 @@
+# name: test/sql/astro.test
+# description: test astro extension
+# group: [sql]
+
+# Before we load the extension, this will fail
+statement error
+SELECT angular_separation(45.0, 30.0, 46.0, 31.0);
+----
+Catalog Error: Scalar Function with name angular_separation does not exist!
+
+# Require statement will ensure this test is run with this extension loaded
+require astro
+
+# Confirm the extension works - Angular separation calculation
+query I
+SELECT angular_separation(45.0, 30.0, 46.0, 31.0) > 0;
+----
+true
+
+# Test coordinate conversion
+query I
+SELECT radec_to_cartesian(45.0, 30.0, 10.0) LIKE '%"x":%';
+----
+true
+
+# Test magnitude to flux conversion
+query I
+SELECT mag_to_flux(15.5, 25.0) > 0;
+----
+true
+
+# Test distance modulus
+query I
+SELECT distance_modulus(1000.0) > 0;
+----
+true
+
+# Test luminosity distance
+query I
+SELECT luminosity_distance(0.1, 70.0) > 0;
+----
+true
+
+# Test redshift to age
+query I
+SELECT redshift_to_age(0.5) > 0;
+----
+true
+
+# Test catalog info
+query I
+SELECT catalog_info('test') LIKE '%"version":%';
+----
+true
