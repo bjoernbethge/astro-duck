@@ -171,7 +171,7 @@ configure_ci:
 	@echo "✅ CI configuration completed"
 
 # Code Quality Targets (für CI)
-format:
+format-check:
 	@echo "🎨 Code formatting..."
 	@if command -v clang-format >/dev/null 2>&1; then \
 		find src -name "*.cpp" -o -name "*.hpp" | xargs clang-format -i; \
@@ -180,7 +180,7 @@ format:
 		echo "⚠️  clang-format not available, skipping"; \
 	fi
 
-tidy:
+tidy-check:
 	@echo "🔍 Code analysis..."
 	@if command -v clang-tidy >/dev/null 2>&1; then \
 		echo "✅ Code analysis completed"; \
