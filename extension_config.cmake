@@ -1,7 +1,7 @@
 # This file is included by DuckDB's build system. It specifies which extension to load
-set(EXTENSION_VERSION "v1.1.3")
-set(DUCKDB_VERSION "v1.1.3")
-set(GIT_COMMIT_HASH "v1.1.3")
+set(EXTENSION_VERSION "v1.0.0")
+set(DUCKDB_VERSION "v1.3.0")
+set(GIT_COMMIT_HASH "v1.3.0")
 # Astro Extension - Astronomical calculations and coordinate transformations
 duckdb_extension_load(astro
     SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}

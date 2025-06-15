@@ -1,5 +1,5 @@
 # Makefile für Astro Extension
-.PHONY: all clean debug release test set_duckdb_version configure_ci format tidy
+.PHONY: all clean debug release test set_duckdb_version configure_ci format-check tidy-check
 
 # Build-Konfiguration
 BUILD_TYPE ?= release
