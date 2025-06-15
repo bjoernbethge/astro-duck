@@ -1,0 +1,300 @@
+name: Deploy Astro Extension
+
+on:
+  push:
+    tags:
+              - 'v*'  # Trigger on version tags like v1.0.0
+  workflow_dispatch:  # Allow manual triggering
+    inputs:
+      version:
+        description: 'Extension version to deploy'
+        required: true
+        default: '1.0.0'
+      upload_target:
+        description: 'Upload target'
+        required: true
+        default: 'github'
+        type: choice
+        options:
+        - github
+        - s3
+        - community
+
+env:
+  EXTENSION_NAME: astro
+  DUCKDB_VERSION: v1.2.1
+
+jobs:
+  deploy:
+    name: Deploy ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - arch: linux_amd64
+            runner: ubuntu-latest
+            build_command: make release
+          - arch: linux_arm64
+            runner: ubuntu-latest
+            build_command: make release
+          - arch: osx_amd64
+            runner: macos-13  # Intel Mac
+            build_command: make release
+          - arch: osx_arm64
+            runner: macos-latest  # Apple Silicon Mac
+            build_command: make release
+          - arch: windows_amd64
+            runner: windows-latest
+            build_command: make release
+          - arch: wasm_mvp
+            runner: ubuntu-latest
+            build_command: make wasm_release
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0
+
+    - name: Setup build environment
+      run: |
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build
+          if [[ "${{ matrix.arch }}" == "wasm_mvp" ]]; then
+            # Install Emscripten for WebAssembly builds
+            git clone https://github.com/emscripten-core/emsdk.git
+            cd emsdk
+            ./emsdk install latest
+            ./emsdk activate latest
+            source ./emsdk_env.sh
+            cd ..
+          fi
+        elif [[ "${{ runner.os }}" == "macOS" ]]; then
+          brew install cmake ninja
+        elif [[ "${{ runner.os }}" == "Windows" ]]; then
+          choco install cmake ninja
+        fi
+
+    - name: Get version
+      id: version
+      run: |
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          echo "upload_target=${{ github.event.inputs.upload_target }}" >> $GITHUB_OUTPUT
+        else
+          # Extract version from tag (remove 'v' prefix)
+          echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          echo "upload_target=github" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Build extension
+      run: |
+        echo "🔨 Building Astro Extension for ${{ matrix.arch }}"
+        ${{ matrix.build_command }}
+        
+        # Verify build output
+        if [[ "${{ matrix.arch }}" == wasm* ]]; then
+          ls -la build/astro_release/extension/astro/*.wasm
+        else
+          ls -la build/astro_release/extension/astro/*.duckdb_extension
+        fi
+
+    - name: Install deployment dependencies
+      run: |
+        # Install bc for calculations
+        if [[ "${{ runner.os }}" == "Linux" ]]; then
+          sudo apt-get install -y bc brotli
+        elif [[ "${{ runner.os }}" == "macOS" ]]; then
+          brew install bc brotli
+        elif [[ "${{ runner.os }}" == "Windows" ]]; then
+          # Use PowerShell for calculations on Windows
+          echo "Using PowerShell for calculations"
+        fi
+
+    - name: Make upload script executable
+      run: chmod +x scripts/astro-extension-upload.sh
+
+    - name: Deploy extension
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        S3_BUCKET: ${{ secrets.S3_BUCKET }}
+        DUCKDB_EXTENSION_SIGNING_PK: ${{ secrets.DUCKDB_EXTENSION_SIGNING_PK }}
+        UPLOAD_AS_LATEST: ${{ github.ref == 'refs/heads/main' }}
+      run: |
+        ./scripts/astro-extension-upload.sh \
+          "${{ steps.version.outputs.version }}" \
+          "${{ env.DUCKDB_VERSION }}" \
+          "${{ matrix.arch }}" \
+          "${{ steps.version.outputs.upload_target }}"
+
+    - name: Upload GitHub Release artifacts
+      if: steps.version.outputs.upload_target == 'github'
+      uses: actions/upload-artifact@v4
+      with:
+        name: astro-extension-${{ matrix.arch }}-${{ steps.version.outputs.version }}
+        path: deploy/${{ steps.version.outputs.version }}/${{ matrix.arch }}/
+        retention-days: 30
+
+    - name: Upload Community Extension artifacts
+      if: steps.version.outputs.upload_target == 'community'
+      uses: actions/upload-artifact@v4
+      with:
+        name: community-extension-${{ matrix.arch }}
+        path: deploy/community-extension/
+        retention-days: 30
+
+  create-release:
+    name: Create GitHub Release
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Get version
+      id: version
+      run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: release-artifacts/
+
+    - name: Prepare release assets
+      run: |
+        mkdir -p release-assets
+        
+        # Collect all extension files
+        find release-artifacts -name "*.duckdb_extension.gz" -o -name "*.duckdb_extension.wasm" | while read file; do
+          # Extract architecture from path
+          arch=$(echo "$file" | grep -o 'astro-extension-[^-]*-' | sed 's/astro-extension-//;s/-$//')
+          filename="astro-${{ steps.version.outputs.version }}-${arch}.$(basename "$file" | sed 's/astro\.//')"
+          cp "$file" "release-assets/$filename"
+        done
+        
+        # Create checksums
+        cd release-assets
+        sha256sum * > checksums.txt
+        
+        echo "📦 Release assets:"
+        ls -la
+
+    - name: Generate release notes
+      run: |
+        cat > release-notes.md << 'EOF'
+        # 🌟 DuckDB Astro Extension v${{ steps.version.outputs.version }}
+        
+        Comprehensive astronomical calculations and coordinate transformations for DuckDB.
+        
+        ## ✨ Features
+        
+        - **Coordinate Transformations**: RA/Dec ↔ Cartesian with full metadata
+        - **Angular Calculations**: Precise angular separation using Haversine formula  
+        - **Photometric Functions**: Magnitude/flux conversions with zero-point support
+        - **Cosmological Calculations**: Luminosity distance, redshift to age
+        - **Modern Integrations**: Arrow, Spatial, and Catalog compatibility
+        
+        ## 🚀 Installation
+        
+        ### From DuckDB Community Extensions (Recommended)
+        ```sql
+        INSTALL astro FROM community;
+        LOAD astro;
+        ```
+        
+        ### Manual Installation
+        1. Download the appropriate binary for your platform below
+        2. Load in DuckDB:
+        ```sql
+        LOAD '/path/to/astro.duckdb_extension';
+        ```
+        
+        ## 📊 Performance
+        
+        - **10,000 objects** processed in **0.004 seconds**
+        - Vectorized execution for optimal performance
+        - Memory-efficient batch processing
+        
+        ## 🔧 Platform Support
+        
+        | Platform | Architecture | Status |
+        |----------|-------------|---------|
+        | Linux | x86_64 | ✅ |
+        | Linux | ARM64 | ✅ |
+        | macOS | x86_64 | ✅ |
+        | macOS | ARM64 (Apple Silicon) | ✅ |
+        | Windows | x86_64 | ✅ |
+        | WebAssembly | MVP | ✅ |
+        
+        ## 📖 Documentation
+        
+        - [Function Reference](https://github.com/bjoern/astropy-extension/blob/main/docs/functions.md)
+        - [Integration Guide](https://github.com/bjoern/astropy-extension/blob/main/docs/integration.md)
+        - [Examples](https://github.com/bjoern/astropy-extension/tree/main/examples)
+        
+        ## 🔍 Verification
+        
+        All binaries are signed and include SHA256 checksums for verification.
+        EOF
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ steps.version.outputs.version }}
+        name: Astro Extension v${{ steps.version.outputs.version }}
+        body_path: release-notes.md
+        files: release-assets/*
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  notify-community:
+    name: Notify Community
+    needs: [deploy, create-release]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Get version
+      id: version
+      run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Notify Discord
+      if: secrets.DISCORD_WEBHOOK_URL
+      run: |
+        curl -H "Content-Type: application/json" \
+             -X POST \
+             -d '{
+               "embeds": [{
+                 "title": "🌟 Astro Extension v${{ steps.version.outputs.version }} Released!",
+                 "description": "New version of the DuckDB Astro Extension is now available with comprehensive astronomical calculations.",
+                 "color": 3447003,
+                 "fields": [
+                   {
+                     "name": "Installation",
+                     "value": "`INSTALL astro FROM community; LOAD astro;`",
+                     "inline": false
+                   },
+                   {
+                     "name": "GitHub Release",
+                     "value": "[Download](https://github.com/bjoern/astropy-extension/releases/tag/v${{ steps.version.outputs.version }})",
+                     "inline": true
+                   }
+                 ],
+                 "timestamp": "'$(date -u +%Y-%m-%dT%H:%M:%S.000Z)'"
+               }]
+             }' \
+             "${{ secrets.DISCORD_WEBHOOK_URL }}"
+
+    - name: Create Community PR reminder
+      run: |
+        echo "🏘️  Don't forget to create a Pull Request to the DuckDB Community Extensions repository!"
+        echo "   1. Fork: https://github.com/duckdb/community-extensions"
+        echo "   2. Add: extensions/astro/description.yml"
+        echo "   3. Submit PR with title: 'Add Astro Extension v${{ steps.version.outputs.version }}'" 

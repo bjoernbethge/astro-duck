@@ -1,8 +1,52 @@
-build
-.idea
-cmake-build-debug
-duckdb_unittest_tempdir/
+# Build directories
+build/
+deploy/
+
+# Temporary files
+*.tmp
+*.log
+/tmp/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
 .DS_Store
-testext
-test/python/__pycache__/
-.Rhistory
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+
+# Test environments
+test_env/
+
+# Extension binaries (keep source, not binaries)
+*.duckdb_extension
+*.duckdb_extension.gz
+*.duckdb_extension.wasm
+
+# Private keys
+*.pem
+private.key
+
+# DuckDB submodule (if using)
+duckdb/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+!extension_config.cmake
