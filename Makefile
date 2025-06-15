@@ -1,5 +1,5 @@
 # Makefile für Astro Extension
-.PHONY: all clean debug release test set_duckdb_version
+.PHONY: all clean debug release test set_duckdb_version configure_ci format tidy
 
 # Build-Konfiguration
 BUILD_TYPE ?= release
@@ -161,6 +161,14 @@ help:
 	@echo "  make -f Makefile.astro test"
 	@echo ""
 	@echo "DuckDB Version: $(DUCKDB_VERSION)"
+
+# CI Configuration (für DuckDB Extension CI Tools)
+configure_ci:
+	@echo "🔧 Configuring CI environment..."
+	@echo "   - DuckDB Version: $(DUCKDB_VERSION)"
+	@echo "   - Extension Version: $(EXTENSION_VERSION)"
+	@echo "   - Extension Name: $(EXTENSION_NAME)"
+	@echo "✅ CI configuration completed"
 
 # Set DuckDB Version (für CI/CD)
 set_duckdb_version:
