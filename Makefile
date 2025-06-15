@@ -19,4 +19,12 @@ export CC=ccache gcc
 export CXX=ccache g++
 
 # Include the Makefile from extension-ci-tools
-include extension-ci-tools/makefiles/duckdb_extension.Makefile 
+include extension-ci-tools/makefiles/duckdb_extension.Makefile
+
+# Override the default test target to work correctly
+test: release
+	./build/release/test/unittest test/sql/*
+
+# Custom test target that works correctly
+test_astro:
+	./build/release/test/unittest test/sql/* 
