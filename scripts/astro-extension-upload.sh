@@ -25,10 +25,10 @@ echo "   Target: $UPLOAD_TARGET"
 
 # Determine extension file path and name
 if [[ $ARCHITECTURE == wasm* ]]; then
-  EXT_FILE="build/astro_release/extension/astro/$EXTENSION_NAME.duckdb_extension.wasm"
+  EXT_FILE="build/release/extension/astro/$EXTENSION_NAME.duckdb_extension.wasm"
   EXT_COMPRESSED="$EXTENSION_NAME.duckdb_extension.wasm"
 else
-  EXT_FILE="build/astro_release/extension/astro/$EXTENSION_NAME.duckdb_extension"
+  EXT_FILE="build/release/extension/astro/$EXTENSION_NAME.duckdb_extension"
   EXT_COMPRESSED="$EXTENSION_NAME.duckdb_extension.gz"
 fi
 

@@ -4,33 +4,50 @@ Comprehensive Test Suite for Refactored Astro Extension
 Tests all astronomical functions with integrated Arrow, GeoParquet, and catalog features
 """
 
-import duckdb
+import subprocess
 import json
 import time
 import sys
 from pathlib import Path
 
+def run_duckdb_query(query):
+    """Run a query using local DuckDB binary"""
+    duckdb_path = Path("./build/release/duckdb")
+    if not duckdb_path.exists():
+        raise FileNotFoundError(f"DuckDB binary not found: {duckdb_path}")
+
+    try:
+        # Run query with DuckDB, allowing unsigned extensions
+        cmd = [str(duckdb_path), "-unsigned", "-c", query]
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=Path.cwd())
+
+        if result.returncode != 0:
+            raise Exception(f"DuckDB error: {result.stderr}")
+
+        return result.stdout.strip()
+    except Exception as e:
+        raise Exception(f"Failed to run DuckDB query: {e}")
+
 def test_extension_loading():
     """Test loading the refactored astro extension"""
     print("🚀 Testing Extension Loading...")
-    
+
     try:
-        # Create connection with unsigned extensions allowed
-        conn = duckdb.connect(config={'allow_unsigned_extensions': 'true'})
-        
-        # Load the refactored extension
-        extension_path = Path("build/astro_release/extension/astro/astro.duckdb_extension")
+        # Check if extension file exists
+        extension_path = Path("build/release/extension/astro/astro.duckdb_extension")
         if not extension_path.exists():
             raise FileNotFoundError(f"Extension not found: {extension_path}")
-        
-        conn.execute(f"LOAD '{extension_path.absolute()}'")
+
+        # Test loading the extension
+        query = f"LOAD '{extension_path.absolute()}'; SELECT 'Extension loaded successfully' as status;"
+        result = run_duckdb_query(query)
         print("   ✅ Refactored Astro extension loaded successfully")
-        
-        return conn
-        
+
+        return "connected"
+
     except Exception as e:
         print(f"   ❌ Failed to load extension: {e}")
-        return None
+        return False
 
 def test_basic_functions(conn):
     """Test basic astronomical functions"""
@@ -291,8 +308,7 @@ def run_comprehensive_test():
     
     success_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
     print(f"\n🎯 Overall Success Rate: {success_rate:.1f}%")
-    
-    conn.close()
+
     return success_rate > 80
 
 if __name__ == "__main__":
