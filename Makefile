@@ -26,6 +26,14 @@ endif
 # Include the Makefile from extension-ci-tools
 include extension-ci-tools/makefiles/duckdb_extension.Makefile
 
+# Override test targets to fix Windows build (remove quotes from TEST_PATH)
+test_release_internal:
+	./build/release/test/unittest "$(PROJ_DIR)test/*"
+test_debug_internal:
+	./build/debug/test/unittest "$(PROJ_DIR)test/*"
+test_reldebug_internal:
+	./build/reldebug/test/unittest "$(PROJ_DIR)test/*"
+
 # Override the default test target to work correctly
 test: release
 	./build/release/test/unittest test/sql/*
