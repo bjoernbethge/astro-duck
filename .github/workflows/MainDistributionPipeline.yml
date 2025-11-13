@@ -37,3 +37,69 @@ jobs:
       ci_tools_version: main
       extension_name: astro
       format_checks: 'format;tidy'
+
+  local-build-test:
+    name: Local Build and Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      # Ensure checkout includes submodules and full history
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Ensure submodules are initialized
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
+          git submodule status --recursive
+
+      - name: Bootstrap vcpkg (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          if (Test-Path "vcpkg\bootstrap-vcpkg.bat") {
+            .\vcpkg\bootstrap-vcpkg.bat
+          } else {
+            Write-Host "vcpkg not found, skipping bootstrap"
+          }
+
+      - name: Bootstrap vcpkg (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          if [ -f vcpkg/bootstrap-vcpkg.sh ]; then
+            ./vcpkg/bootstrap-vcpkg.sh
+          else
+            echo "vcpkg not found, skipping bootstrap"
+          fi
+
+      # Configure CMake
+      - name: Configure CMake
+        run: cmake -S duckdb -B build/release -DCMAKE_BUILD_TYPE=Release -DEXTENSION_STATIC_BUILD=1 -DDUCKDB_EXTENSION_CONFIGS=${{ github.workspace }}/extension_config.cmake
+
+      # Build (release) explicitly
+      - name: Build (release)
+        run: cmake --build build/release --config Release
+
+      # Run tests: use shell script that handles cross-platform
+      - name: Run tests
+        shell: bash
+        run: |
+          if command -v ctest >/dev/null 2>&1; then
+            ctest --test-dir build/release -C Release --output-on-failure || (ls -R build/release && exit 1)
+          else
+            if [ -f build/release/test/unittest ] || [ -f build/release/test/unittest.exe ]; then
+              if [ -f build/release/test/unittest ]; then
+                ./build/release/test/unittest "test/*" || exit 1
+              else
+                ./build/release/test/unittest.exe "$GITHUB_WORKSPACE/test/*" || exit 1
+              fi
+            else
+              echo "Test binary not found; listing build tree:"
+              ls -R build/release || true
+              exit 1
+            fi
+          fi
