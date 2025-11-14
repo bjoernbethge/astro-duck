@@ -50,33 +50,74 @@ endif
 
 # Override test targets to fix Windows build
 # On Windows, try both possible paths (with and without Release subdirectory)
-test_release_internal:
-	@if [ -f "build/release/test/unittest.exe" ]; then \
-		build/release/test/unittest.exe "$(PROJ_DIR)test/*"; \
-	elif [ -f "build/release/test/Release/unittest.exe" ]; then \
-		build/release/test/Release/unittest.exe "$(PROJ_DIR)test/*"; \
-	else \
-		echo "Error: unittest.exe not found in build/release/test/ or build/release/test/Release/"; \
-		exit 1; \
-	fi
-test_debug_internal:
-	@if [ -f "build/debug/test/unittest.exe" ]; then \
-		build/debug/test/unittest.exe "$(PROJ_DIR)test/*"; \
-	elif [ -f "build/debug/test/Debug/unittest.exe" ]; then \
-		build/debug/test/Debug/unittest.exe "$(PROJ_DIR)test/*"; \
-	else \
-		echo "Error: unittest.exe not found in build/debug/test/ or build/debug/test/Debug/"; \
-		exit 1; \
-	fi
-test_reldebug_internal:
-	@if [ -f "build/reldebug/test/unittest.exe" ]; then \
-		build/reldebug/test/unittest.exe "$(PROJ_DIR)test/*"; \
-	elif [ -f "build/reldebug/test/RelDebug/unittest.exe" ]; then \
-		build/reldebug/test/RelDebug/unittest.exe "$(PROJ_DIR)test/*"; \
-	else \
-		echo "Error: unittest.exe not found in build/reldebug/test/ or build/reldebug/test/RelDebug/"; \
-		exit 1; \
-	fi
+# On Unix/Linux/MacOS, use the standard path
+ifneq ($(filter windows_%,$(DUCKDB_PLATFORM)),)
+    # Windows: Try both possible paths
+    test_release_internal:
+		@if [ -f "build/release/test/unittest.exe" ]; then \
+			build/release/test/unittest.exe "$(PROJ_DIR)test/*"; \
+		elif [ -f "build/release/test/Release/unittest.exe" ]; then \
+			build/release/test/Release/unittest.exe "$(PROJ_DIR)test/*"; \
+		else \
+			echo "Error: unittest.exe not found in build/release/test/ or build/release/test/Release/"; \
+			exit 1; \
+		fi
+    test_debug_internal:
+		@if [ -f "build/debug/test/unittest.exe" ]; then \
+			build/debug/test/unittest.exe "$(PROJ_DIR)test/*"; \
+		elif [ -f "build/debug/test/Debug/unittest.exe" ]; then \
+			build/debug/test/Debug/unittest.exe "$(PROJ_DIR)test/*"; \
+		else \
+			echo "Error: unittest.exe not found in build/debug/test/ or build/debug/test/Debug/"; \
+			exit 1; \
+		fi
+    test_reldebug_internal:
+		@if [ -f "build/reldebug/test/unittest.exe" ]; then \
+			build/reldebug/test/unittest.exe "$(PROJ_DIR)test/*"; \
+		elif [ -f "build/reldebug/test/RelDebug/unittest.exe" ]; then \
+			build/reldebug/test/RelDebug/unittest.exe "$(PROJ_DIR)test/*"; \
+		else \
+			echo "Error: unittest.exe not found in build/reldebug/test/ or build/reldebug/test/RelDebug/"; \
+			exit 1; \
+		fi
+else ifeq ($(OS),Windows_NT)
+    # Windows (fallback): Try both possible paths
+    test_release_internal:
+		@if [ -f "build/release/test/unittest.exe" ]; then \
+			build/release/test/unittest.exe "$(PROJ_DIR)test/*"; \
+		elif [ -f "build/release/test/Release/unittest.exe" ]; then \
+			build/release/test/Release/unittest.exe "$(PROJ_DIR)test/*"; \
+		else \
+			echo "Error: unittest.exe not found in build/release/test/ or build/release/test/Release/"; \
+			exit 1; \
+		fi
+    test_debug_internal:
+		@if [ -f "build/debug/test/unittest.exe" ]; then \
+			build/debug/test/unittest.exe "$(PROJ_DIR)test/*"; \
+		elif [ -f "build/debug/test/Debug/unittest.exe" ]; then \
+			build/debug/test/Debug/unittest.exe "$(PROJ_DIR)test/*"; \
+		else \
+			echo "Error: unittest.exe not found in build/debug/test/ or build/debug/test/Debug/"; \
+			exit 1; \
+		fi
+    test_reldebug_internal:
+		@if [ -f "build/reldebug/test/unittest.exe" ]; then \
+			build/reldebug/test/unittest.exe "$(PROJ_DIR)test/*"; \
+		elif [ -f "build/reldebug/test/RelDebug/unittest.exe" ]; then \
+			build/reldebug/test/RelDebug/unittest.exe "$(PROJ_DIR)test/*"; \
+		else \
+			echo "Error: unittest.exe not found in build/reldebug/test/ or build/reldebug/test/RelDebug/"; \
+			exit 1; \
+		fi
+else
+    # Unix/Linux/MacOS: Use standard path (no shell logic needed)
+    test_release_internal:
+		$(UNITTEST_RELEASE) "$(PROJ_DIR)test/*"
+    test_debug_internal:
+		$(UNITTEST_DEBUG) "$(PROJ_DIR)test/*"
+    test_reldebug_internal:
+		$(UNITTEST_RELDEBUG) "$(PROJ_DIR)test/*"
+endif
 
 # Override the default test target to work correctly
 test: release
