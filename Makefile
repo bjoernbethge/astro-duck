@@ -31,14 +31,16 @@ include extension-ci-tools/makefiles/duckdb_extension.Makefile
 # Fallback: Check OS variable (Windows_NT on Windows)
 ifneq ($(filter windows_%,$(DUCKDB_PLATFORM)),)
     # Windows detected via DUCKDB_PLATFORM
-    UNITTEST_RELEASE := build/release/test/unittest.exe
-    UNITTEST_DEBUG := build/debug/test/unittest.exe
-    UNITTEST_RELDEBUG := build/reldebug/test/unittest.exe
+    # On Windows, CMake may put executables in Release/Debug subdirectories
+    # Try Release subdirectory first, fallback to direct path
+    UNITTEST_RELEASE := build/release/test/Release/unittest.exe
+    UNITTEST_DEBUG := build/debug/test/Debug/unittest.exe
+    UNITTEST_RELDEBUG := build/reldebug/test/RelDebug/unittest.exe
 else ifeq ($(OS),Windows_NT)
     # Windows detected via OS variable
-    UNITTEST_RELEASE := build/release/test/unittest.exe
-    UNITTEST_DEBUG := build/debug/test/unittest.exe
-    UNITTEST_RELDEBUG := build/reldebug/test/unittest.exe
+    UNITTEST_RELEASE := build/release/test/Release/unittest.exe
+    UNITTEST_DEBUG := build/debug/test/Debug/unittest.exe
+    UNITTEST_RELDEBUG := build/reldebug/test/RelDebug/unittest.exe
 else
     # Unix/Linux/MacOS (no .exe extension)
     UNITTEST_RELEASE := build/release/test/unittest
