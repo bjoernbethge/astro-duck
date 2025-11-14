@@ -26,18 +26,29 @@ endif
 # Include the Makefile from extension-ci-tools
 include extension-ci-tools/makefiles/duckdb_extension.Makefile
 
-# Override test targets to fix Windows build (remove quotes from TEST_PATH)
+# Detect OS and set executable extension
+ifeq ($(OS),Windows_NT)
+    UNITTEST_RELEASE := build/release/test/unittest.exe
+    UNITTEST_DEBUG := build/debug/test/unittest.exe
+    UNITTEST_RELDEBUG := build/reldebug/test/unittest.exe
+else
+    UNITTEST_RELEASE := build/release/test/unittest
+    UNITTEST_DEBUG := build/debug/test/unittest
+    UNITTEST_RELDEBUG := build/reldebug/test/unittest
+endif
+
+# Override test targets to fix Windows build
 test_release_internal:
-	./build/release/test/unittest "$(PROJ_DIR)test/*"
+	$(UNITTEST_RELEASE) "$(PROJ_DIR)test/*"
 test_debug_internal:
-	./build/debug/test/unittest "$(PROJ_DIR)test/*"
+	$(UNITTEST_DEBUG) "$(PROJ_DIR)test/*"
 test_reldebug_internal:
-	./build/reldebug/test/unittest "$(PROJ_DIR)test/*"
+	$(UNITTEST_RELDEBUG) "$(PROJ_DIR)test/*"
 
 # Override the default test target to work correctly
 test: release
-	./build/release/test/unittest test/sql/*
+	$(UNITTEST_RELEASE) test/sql/*
 
 # Custom test target that works correctly
 test_astro:
-	./build/release/test/unittest test/sql/* 
+	$(UNITTEST_RELEASE) test/sql/* 
