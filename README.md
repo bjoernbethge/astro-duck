@@ -4,7 +4,7 @@ Comprehensive astronomical calculations and coordinate transformations for DuckD
 
 [![Build Status](https://github.com/bjoernbethge/astro-duck/workflows/CI/badge.svg)](https://github.com/bjoernbethge/astro-duck/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![DuckDB](https://img.shields.io/badge/DuckDB-v1.2.1-blue.svg)](https://duckdb.org/)
+[![DuckDB](https://img.shields.io/badge/DuckDB-v1.3.0-blue.svg)](https://duckdb.org/)
 
 ## 🚀 Quick Start
 

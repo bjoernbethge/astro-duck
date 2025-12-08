@@ -45,51 +45,9 @@ const double EARTH_RADIUS = 6.371e6;       // meters
 const double AU = 1.496e11;                // meters (Astronomical Unit)
 const double HUBBLE_CONSTANT = 70.0;       // km/s/Mpc (approximate)
 
-// ===== ASTRO CATALOG METADATA =====
-struct AstroCatalogMetadata {
-	string catalog_name;
-	string version;
-	unordered_map<string, string> column_metadata;
-	vector<string> coordinate_systems;
-	double epoch = 2000.0; // Default J2000
-
-	void RegisterColumn(const string &column_name, const string &description) {
-		column_metadata[column_name] = description;
-	}
-
-	bool HasCoordinateSystem(const string &system) const {
-		return std::find(coordinate_systems.begin(), coordinate_systems.end(), system) != coordinate_systems.end();
-	}
-};
-
-// ===== ASTRO ARROW INTEGRATION =====
-class AstroArrowProcessor {
-private:
-	ClientContext &context;
-	unique_ptr<ExpressionExecutor> executor;
-
-public:
-	AstroArrowProcessor(ClientContext &ctx) : context(ctx) {
-		executor = make_uniq<ExpressionExecutor>(context);
-	}
-
-	// Process astronomical data chunks (simplified without direct Arrow dependency)
-	bool ProcessAstroChunk(DataChunk &input_chunk, idx_t &count) {
-		count = input_chunk.size();
-		// Process astronomical data without direct Arrow integration
-		// This can be extended when Arrow utilities are properly available
-		return count > 0;
-	}
-
-	// Convert astronomical coordinates to structured format
-	string ConvertCoordsToStructured(DataChunk &input_chunk) {
-		// Return structured representation of astronomical coordinates
-		std::ostringstream result;
-		result << "{\"chunk_size\":" << input_chunk.size() << ",\"column_count\":" << input_chunk.ColumnCount()
-		       << ",\"format\":\"astronomical_coordinates\"}";
-		return result.str();
-	}
-};
+// ===== FORWARD DECLARATIONS =====
+std::vector<double> RADecToCartesian(double ra_deg, double dec_deg, double distance);
+double AngularSeparation(double ra1_deg, double dec1_deg, double ra2_deg, double dec2_deg);
 
 // ===== ASTRO GEOMETRY INTEGRATION =====
 class AstroGeometryProcessor {
@@ -114,7 +72,7 @@ public:
 		}
 	}
 
-	// Create celestial geometry points
+	// Create celestial geometry points - uses standalone function
 	string CreateCelestialPoint(double ra, double dec, double distance = 1.0) {
 		auto coords = RADecToCartesian(ra, dec, distance);
 
@@ -124,36 +82,9 @@ public:
 		return wkt.str();
 	}
 
-	// Calculate spherical distance on celestial sphere
+	// Calculate spherical distance on celestial sphere - uses standalone function
 	double CelestialDistance(double ra1, double dec1, double ra2, double dec2) {
 		return AngularSeparation(ra1, dec1, ra2, dec2);
-	}
-
-private:
-	std::vector<double> RADecToCartesian(double ra_deg, double dec_deg, double distance = 1.0) {
-		double ra_rad = ra_deg * M_PI / 180.0;
-		double dec_rad = dec_deg * M_PI / 180.0;
-
-		double x = distance * cos(dec_rad) * cos(ra_rad);
-		double y = distance * cos(dec_rad) * sin(ra_rad);
-		double z = distance * sin(dec_rad);
-
-		return {x, y, z};
-	}
-
-	double AngularSeparation(double ra1_deg, double dec1_deg, double ra2_deg, double dec2_deg) {
-		double ra1 = ra1_deg * M_PI / 180.0;
-		double dec1 = dec1_deg * M_PI / 180.0;
-		double ra2 = ra2_deg * M_PI / 180.0;
-		double dec2 = dec2_deg * M_PI / 180.0;
-
-		double dra = ra2 - ra1;
-		double ddec = dec2 - dec1;
-
-		double a = sin(ddec / 2) * sin(ddec / 2) + cos(dec1) * cos(dec2) * sin(dra / 2) * sin(dra / 2);
-		double c = 2 * atan2(sqrt(a), sqrt(1 - a));
-
-		return c * 180.0 / M_PI;
 	}
 };
 
@@ -186,7 +117,7 @@ double AngularSeparation(double ra1_deg, double dec1_deg, double ra2_deg, double
 
 // ===== PHOTOMETRIC FUNCTIONS =====
 double MagnitudeToFlux(double magnitude, double zero_point = 0.0) {
-	return pow(10.0, -(magnitude - zero_point) / 2.5);
+	return pow(10.0, (zero_point - magnitude) / 2.5);
 }
 
 double FluxToMagnitude(double flux, double zero_point = 0.0) {
@@ -234,7 +165,7 @@ static void AstroRADecToCartesianFunction(DataChunk &args, ExpressionState &stat
 	    });
 }
 
-// Enhanced angular separation with metadata
+// Enhanced angular separation - optimized implementation
 static void AstroAngularSeparationFunction(DataChunk &args, ExpressionState &state, Vector &result) {
 	auto &ra1_vector = args.data[0];
 	auto &dec1_vector = args.data[1];
@@ -252,6 +183,7 @@ static void AstroAngularSeparationFunction(DataChunk &args, ExpressionState &sta
 	auto ra2_ptr = UnifiedVectorFormat::GetData<double>(ra2_data);
 	auto dec2_ptr = UnifiedVectorFormat::GetData<double>(dec2_data);
 	auto result_data = FlatVector::GetData<double>(result);
+	auto &result_validity = FlatVector::Validity(result);
 
 	for (idx_t i = 0; i < args.size(); i++) {
 		auto ra1_idx = ra1_data.sel->get_index(i);
@@ -261,7 +193,7 @@ static void AstroAngularSeparationFunction(DataChunk &args, ExpressionState &sta
 
 		if (!ra1_data.validity.RowIsValid(ra1_idx) || !dec1_data.validity.RowIsValid(dec1_idx) ||
 		    !ra2_data.validity.RowIsValid(ra2_idx) || !dec2_data.validity.RowIsValid(dec2_idx)) {
-			FlatVector::SetNull(result, i, true);
+			result_validity.SetInvalid(i);
 			continue;
 		}
 
@@ -325,18 +257,19 @@ static void AstroDistanceModulusFunction(DataChunk &args, ExpressionState &state
 
 	auto distance_ptr = UnifiedVectorFormat::GetData<double>(distance_data);
 	auto result_data = FlatVector::GetData<double>(result);
+	auto &result_validity = FlatVector::Validity(result);
 
 	for (idx_t i = 0; i < args.size(); i++) {
 		auto distance_idx = distance_data.sel->get_index(i);
 
 		if (!distance_data.validity.RowIsValid(distance_idx)) {
-			FlatVector::SetNull(result, i, true);
+			result_validity.SetInvalid(i);
 			continue;
 		}
 
 		double distance_pc = distance_ptr[distance_idx];
 		if (distance_pc <= 0) {
-			FlatVector::SetNull(result, i, true);
+			result_validity.SetInvalid(i);
 		} else {
 			result_data[i] = DistanceModulus(distance_pc);
 		}
