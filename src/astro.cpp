@@ -46,7 +46,7 @@ const double AU = 1.496e11;                // meters (Astronomical Unit)
 const double HUBBLE_CONSTANT = 70.0;       // km/s/Mpc (approximate)
 
 // ===== FORWARD DECLARATIONS =====
-std::vector<double> RADecToCartesian(double ra_deg, double dec_deg, double distance);
+std::vector<double> RADecToCartesian(double ra_deg, double dec_deg, double distance = 1.0);
 double AngularSeparation(double ra1_deg, double dec1_deg, double ra2_deg, double dec2_deg);
 
 // ===== ASTRO GEOMETRY INTEGRATION =====
@@ -89,7 +89,7 @@ public:
 };
 
 // ===== COORDINATE CONVERSION FUNCTIONS =====
-std::vector<double> RADecToCartesian(double ra_deg, double dec_deg, double distance = 1.0) {
+std::vector<double> RADecToCartesian(double ra_deg, double dec_deg, double distance) {
 	double ra_rad = ra_deg * M_PI / 180.0;
 	double dec_rad = dec_deg * M_PI / 180.0;
 
