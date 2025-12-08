@@ -158,8 +158,7 @@ static void AstroRADecToCartesianFunction(DataChunk &args, ExpressionState &stat
 		    std::ostringstream json_result;
 		    json_result << "{\"x\":" << std::fixed << std::setprecision(8) << coords[0] << ",\"y\":" << coords[1]
 		                << ",\"z\":" << coords[2] << ",\"ra\":" << ra << ",\"dec\":" << dec
-		                << ",\"distance\":" << distance << ",\"coordinate_system\":\"ICRS\""
-		                << ",\"epoch\":2000.0}";
+		                << ",\"distance\":" << distance << ",\"coordinate_system\":\"ICRS\"" << ",\"epoch\":2000.0}";
 
 		    return StringVector::AddString(result, json_result.str());
 	    });
@@ -227,10 +226,8 @@ static void AstroCatalogInfoFunction(DataChunk &args, ExpressionState &state, Ve
 		string catalog_str = catalog_name.GetString();
 
 		std::ostringstream info;
-		info << "{\"catalog\":\"" << catalog_str << "\""
-		     << ",\"version\":\"1.0.0\""
-		     << ",\"coordinate_system\":\"ICRS\""
-		     << ",\"epoch\":2000.0"
+		info << "{\"catalog\":\"" << catalog_str << "\"" << ",\"version\":\"1.0.0\""
+		     << ",\"coordinate_system\":\"ICRS\"" << ",\"epoch\":2000.0"
 		     << ",\"supported_functions\":[\"angular_separation\",\"radec_to_cartesian\",\"mag_to_flux\",\"distance_"
 		        "modulus\",\"luminosity_distance\",\"redshift_to_age\"]"
 		     << ",\"extensions\":[\"arrow\",\"spatial\",\"parquet\"]}";
