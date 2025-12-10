@@ -50,3 +50,4 @@ Makefile
 *.cmake
 !CMakeLists.txt
 !extension_config.cmake
+_codeql_detected_source_root
