@@ -293,51 +293,51 @@ static void AstroRedshiftToAgeFunction(DataChunk &args, ExpressionState &state, 
 }
 
 // ===== EXTENSION REGISTRATION =====
-static void LoadInternal(DatabaseInstance &instance) {
+static void LoadInternal(ExtensionLoader &loader) {
 	// Enhanced coordinate conversion with geometry support
 	auto radec_to_cartesian =
 	    ScalarFunction("radec_to_cartesian", {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE},
 	                   LogicalType::VARCHAR, AstroRADecToCartesianFunction);
-	ExtensionUtil::RegisterFunction(instance, radec_to_cartesian);
+	loader.RegisterFunction( radec_to_cartesian);
 
 	// Angular separation
 	auto angular_separation = ScalarFunction(
 	    "angular_separation", {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE},
 	    LogicalType::DOUBLE, AstroAngularSeparationFunction);
-	ExtensionUtil::RegisterFunction(instance, angular_separation);
+	loader.RegisterFunction( angular_separation);
 
 	// Celestial geometry point creation
 	auto celestial_point =
 	    ScalarFunction("celestial_point", {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE},
 	                   LogicalType::VARCHAR, AstroCelestialPointFunction);
-	ExtensionUtil::RegisterFunction(instance, celestial_point);
+	loader.RegisterFunction( celestial_point);
 
 	// Catalog metadata
 	auto catalog_info =
 	    ScalarFunction("catalog_info", {LogicalType::VARCHAR}, LogicalType::VARCHAR, AstroCatalogInfoFunction);
-	ExtensionUtil::RegisterFunction(instance, catalog_info);
+	loader.RegisterFunction( catalog_info);
 
 	// Photometric functions
 	auto mag_to_flux = ScalarFunction("mag_to_flux", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE,
 	                                  AstroMagToFluxFunction);
-	ExtensionUtil::RegisterFunction(instance, mag_to_flux);
+	loader.RegisterFunction( mag_to_flux);
 
 	auto distance_modulus =
 	    ScalarFunction("distance_modulus", {LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroDistanceModulusFunction);
-	ExtensionUtil::RegisterFunction(instance, distance_modulus);
+	loader.RegisterFunction( distance_modulus);
 
 	// Cosmological functions
 	auto luminosity_distance = ScalarFunction("luminosity_distance", {LogicalType::DOUBLE, LogicalType::DOUBLE},
 	                                          LogicalType::DOUBLE, AstroLuminosityDistanceFunction);
-	ExtensionUtil::RegisterFunction(instance, luminosity_distance);
+	loader.RegisterFunction( luminosity_distance);
 
 	auto redshift_to_age =
 	    ScalarFunction("redshift_to_age", {LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroRedshiftToAgeFunction);
-	ExtensionUtil::RegisterFunction(instance, redshift_to_age);
+	loader.RegisterFunction( redshift_to_age);
 }
 
-void AstroExtension::Load(DuckDB &db) {
-	LoadInternal(*db.instance);
+void AstroExtension::Load(ExtensionLoader &loader) {
+	LoadInternal(loader);
 }
 
 std::string AstroExtension::Name() {
@@ -356,12 +356,8 @@ std::string AstroExtension::Version() const {
 
 extern "C" {
 
-DUCKDB_EXTENSION_API void astro_init(duckdb::DatabaseInstance &db) {
-	LoadInternal(db);
-}
-
-DUCKDB_EXTENSION_API const char *astro_version() {
-	return duckdb::DuckDB::LibraryVersion();
+DUCKDB_CPP_EXTENSION_ENTRY(astro, loader) {
+	duckdb::LoadInternal(loader);
 }
 }
 
