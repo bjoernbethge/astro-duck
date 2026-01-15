@@ -3,7 +3,24 @@
 #     this workflow will be removed when scripts/bootstrap-template.py is run
 #
 name: Extension Template
-on: [push, pull_request,repository_dispatch]
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+      - 'doc/**'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '**.txt'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'doc/**'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '**.txt'
+  repository_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref || '' }}-${{ github.base_ref || '' }}-${{ github.ref != 'refs/heads/main' || github.sha }}
   cancel-in-progress: true
