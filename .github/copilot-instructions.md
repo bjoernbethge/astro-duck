@@ -83,14 +83,25 @@ python simple_test.py   # Quick smoke test
 - `Makefile`: Main build orchestrator (includes extension-ci-tools makefiles)
 - `CMakeLists.txt`: Extension-specific CMake configuration
 - `extension_config.cmake`: Defines extension version (v1.0.0), DuckDB version (v1.4.0), and build configuration
-- `test_astro.py`: Comprehensive test suite for all functions
+- `test_astro.py`: Comprehensive Python test suite for all functions
 - `simple_test.py`: Quick smoke test
 - `.gitmodules`: Submodule configuration (duckdb, extension-ci-tools)
+- `.gitignore`: Excludes build/, duckdb/, *.duckdb_extension, Python cache
 
 ### Source Code (`src/`)
 - `src/astro.cpp`: Main implementation (~800 lines) containing all astronomical functions
 - `src/include/astro.hpp`: Function declarations and extension header
 - `src/include/astro_extension.hpp`: DuckDB extension interface
+
+### Tests (`test/`)
+- `test/sql/astro.test`: 50 comprehensive SQLLogicTests (DuckDB standard format)
+  - Tests all functions, edge cases, NULL handling, batch processing
+  - Uses `require astro` directive to ensure extension is loaded
+- `test/README.md`: Testing documentation
+
+### Documentation (`docs/`)
+- `docs/UPDATING.md`: Guide for updating DuckDB version and handling API changes
+- `docs/README.md`: Additional documentation
 
 ### Key Functions Implemented
 1. `angular_separation(ra1, dec1, ra2, dec2)` - Haversine formula for angular distance
@@ -216,6 +227,11 @@ ls -la build/release/duckdb
 - Follow DuckDB's C++ style (enforced by .clang-format symlink)
 - Extension version is defined in `extension_config.cmake`, not CMakeLists.txt
 - Python tests expect specific JSON output format from functions (includes metadata like coordinate_system, epoch)
+- When updating DuckDB version: see `docs/UPDATING.md` for proper procedure
+  - Update duckdb submodule to latest tagged release
+  - Update extension-ci-tools to matching branch (e.g., v1.1.0 branch for DuckDB v1.1.0)
+  - Update duckdb_version in `.github/workflows/MainDistributionPipeline.yml`
+  - Be prepared to handle C++ API changes (DuckDB's internal API is not stable)
 
 ## Trust These Instructions
 
