@@ -8,14 +8,14 @@
 - Language: C++ (C++17 required)
 - Project Type: DuckDB Extension
 - Size: Small (~10 source files + submodules)
-- Target Runtime: DuckDB v1.4.3 (configurable via extension_config.cmake)
+- Target Runtime: DuckDB v1.3.0 (configurable via extension_config.cmake)
 - Frameworks: CMake build system, DuckDB extension API
 
 ## Critical Build Requirements
 
 ### Prerequisites (MUST be installed)
 - CMake 3.15+
-- C++17 compatible compiler (GCC 13.3.0+ or equivalent)
+- C++17 compatible compiler
 - Python 3.7+ (for testing)
 - Git (for submodule management)
 
@@ -82,14 +82,14 @@ python simple_test.py   # Quick smoke test
 ### Root Directory Files
 - `Makefile`: Main build orchestrator (includes extension-ci-tools makefiles)
 - `CMakeLists.txt`: Extension-specific CMake configuration
-- `extension_config.cmake`: Defines extension version (v1.0.0), DuckDB version (v1.4.0), and build configuration
+- `extension_config.cmake`: Defines extension version (v1.0.0), DuckDB version (v1.3.0), and build configuration
 - `test_astro.py`: Comprehensive Python test suite for all functions
 - `simple_test.py`: Quick smoke test
 - `.gitmodules`: Submodule configuration (duckdb, extension-ci-tools)
 - `.gitignore`: Excludes build/, duckdb/, *.duckdb_extension, Python cache
 
 ### Source Code (`src/`)
-- `src/astro.cpp`: Main implementation (~800 lines) containing all astronomical functions
+- `src/astro.cpp`: Main implementation (~380 lines) containing all astronomical functions
 - `src/include/astro.hpp`: Function declarations and extension header
 - `src/include/astro_extension.hpp`: DuckDB extension interface
 
@@ -119,11 +119,12 @@ python simple_test.py   # Quick smoke test
 
 ### CI/CD Workflows (`.github/workflows/`)
 - `MainDistributionPipeline.yml`: Main CI using duckdb/extension-ci-tools (builds for all platforms)
+  - **Note:** CI uses `duckdb_version: v1.4-andium` branch for CI tools, which may be newer than the extension's target DuckDB version (v1.3.0 in extension_config.cmake). This is intentional - the CI build uses a compatible newer version for testing.
 - `ExtensionTemplate.yml`: Template testing workflow (can be ignored for astro extension)
 - `deploy.yml`: Multi-platform deployment workflow (GitHub/S3/Community)
 
 **CI Build Configuration:**
-- Uses `duckdb_version: v1.4-andium` (not v1.4.3 as in extension_config.cmake)
+- Uses extension-ci-tools for standardized build process
 - Excludes certain architectures on PRs to speed up CI
 - Requires `-unsigned` flag when loading extension locally
 
