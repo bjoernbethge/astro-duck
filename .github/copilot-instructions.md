@@ -52,20 +52,30 @@ make debug
 
 ### Testing
 
-**ALWAYS run tests after building:**
-```bash
-python test_astro.py
-```
+**Two types of tests are available:**
 
-**Simple smoke test:**
+1. **SQLLogicTests** (preferred by DuckDB, comprehensive):
 ```bash
-python simple_test.py
+make test          # Run all SQLLogicTests with release build
+make test_debug    # Run all SQLLogicTests with debug build
 ```
+   - Located in `test/sql/astro.test`
+   - Contains 50 comprehensive tests covering all functions, edge cases, and NULL handling
+   - Tests use DuckDB's standard SQLLogicTest format
+
+2. **Python tests** (quick validation):
+```bash
+python test_astro.py    # Comprehensive test suite
+python simple_test.py   # Quick smoke test
+```
+   - Tests require the extension to be built first
+   - Tests use `build/release/duckdb` binary with `-unsigned` flag to load local extension
+   - Tests verify all 8 astronomical functions plus integration features
 
 **Test Requirements:**
 - Tests require the extension to be built first
-- Tests use `build/release/duckdb` binary with `-unsigned` flag to load local extension
-- Tests verify all 8 astronomical functions plus integration features
+- SQLLogicTests use `require astro` directive to ensure extension is loaded
+- Python tests manually load extension from `build/release/extension/astro/astro.duckdb_extension`
 
 ## Project Structure
 
@@ -143,8 +153,9 @@ python simple_test.py
 1. Declare in `src/include/astro.hpp`
 2. Implement in `src/astro.cpp`
 3. Register in extension's `LoadInternal()` function using `CreateScalarFunction()`
-4. Add tests to `test_astro.py`
-5. Update `README.md` function table
+4. Add tests to `test/sql/astro.test` (SQLLogicTest format - preferred)
+5. Optionally add Python tests to `test_astro.py`
+6. Update `README.md` function table
 
 ### Clean Build
 ```bash
@@ -157,10 +168,13 @@ Removes `build/` directory and rebuilds from scratch.
 Before submitting PRs, the following must pass:
 
 1. **Build:** `make release` (or `make debug`)
-2. **Tests:** `python test_astro.py` (all tests must pass)
+2. **Tests:** 
+   - `make test` (SQLLogicTests - preferred, comprehensive)
+   - OR `python test_astro.py` (Python tests)
 3. **CI:** GitHub Actions runs `MainDistributionPipeline.yml`
    - Builds for linux_amd64, linux_arm64, osx_amd64, osx_arm64, windows_amd64, wasm_mvp
    - On PRs, most architectures are excluded for speed (only linux_amd64 is built)
+   - Runs SQLLogicTests automatically
 
 ## Performance Characteristics
 
@@ -181,7 +195,9 @@ make debug                     # Debug build
 make clean && make release     # Clean rebuild
 
 # Test
-python test_astro.py          # Full test suite
+make test                      # SQLLogicTests (preferred)
+make test_debug                # SQLLogicTests with debug build
+python test_astro.py          # Python test suite
 python simple_test.py         # Quick smoke test
 
 # Check build output
