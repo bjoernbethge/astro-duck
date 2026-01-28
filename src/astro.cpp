@@ -11,6 +11,7 @@
 #include "duckdb/common/arrow/arrow_util.hpp"
 #include "duckdb/common/arrow/arrow_appender.hpp"
 #include "duckdb/common/types/data_chunk.hpp"
+#include "duckdb/common/types/vector.hpp"
 #include "duckdb/catalog/catalog.hpp"
 #include "duckdb/catalog/catalog_entry/scalar_function_catalog_entry.hpp"
 #include "duckdb/execution/expression_executor.hpp"
@@ -27,6 +28,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <memory>
 
 // Define M_PI for Windows compatibility
@@ -38,11 +40,21 @@ namespace duckdb {
 
 // ===== ASTRONOMICAL CONSTANTS =====
 const double SPEED_OF_LIGHT = 299792458.0; // m/s
+const double GRAVITATIONAL_CONSTANT = 6.67430e-11; // m^3/(kg*s^2)
 const double PARSEC_TO_METERS = 3.0857e16; // meters
+const double LIGHT_YEAR = 9.4607e15; // meters
 const double SOLAR_MASS = 1.989e30;        // kg
+const double SOLAR_RADIUS = 6.957e8;       // meters
+const double SOLAR_LUMINOSITY = 3.828e26;  // watts
+const double EARTH_MASS = 5.9722e24;       // kg
 const double EARTH_RADIUS = 6.371e6;       // meters
 const double AU = 1.496e11;                // meters (Astronomical Unit)
+const double STEFAN_BOLTZMANN = 5.670374419e-8; // W/(m^2*K^4)
+const double JUPITER_MASS = 1.898e27;      // kg
+const double JUPITER_RADIUS = 6.9911e7;    // meters
 const double HUBBLE_CONSTANT = 70.0;       // km/s/Mpc (approximate)
+const double JULIAN_DAY_SECONDS = 86400.0;
+const double SECTOR_BASE_SIZE_M = 1.0;
 
 // ===== FORWARD DECLARATIONS =====
 std::vector<double> RADecToCartesian(double ra_deg, double dec_deg, double distance = 1.0);
