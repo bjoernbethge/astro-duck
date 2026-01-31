@@ -88,17 +88,17 @@ true
 # ============================================
 
 query I
-SELECT (astro_radec_to_xyz(0.0, 0.0, 1.0)).x = 1.0;
+SELECT (astro_radec_to_xyz(0.0, 0.0, 1.0)).x_m = 1.0;
 ----
 true
 
 query I
-SELECT (astro_radec_to_xyz(90.0, 0.0, 1.0)).y > 0.99;
+SELECT (astro_radec_to_xyz(90.0, 0.0, 1.0)).y_m > 0.99;
 ----
 true
 
 query I
-SELECT (astro_radec_to_xyz(0.0, 90.0, 1.0)).z > 0.99;
+SELECT (astro_radec_to_xyz(0.0, 90.0, 1.0)).z_m > 0.99;
 ----
 true
 
