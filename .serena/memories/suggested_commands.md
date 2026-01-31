@@ -1,14 +1,14 @@
 # Suggested Commands
 
-## Serena Setup (für symbolische Analyse)
+## Serena Setup (for symbolic analysis)
 ```bash
-# 1. Build ausführen (generiert compile_commands.json)
+# 1. Run build (generates compile_commands.json)
 make release
 
-# 2. compile_commands.json ins Root verlinken
+# 2. Link compile_commands.json to root
 ln -s build/release/compile_commands.json .
 
-# 3. Claude Code neu starten (lädt Serena MCP neu)
+# 3. Restart Claude Code (reloads Serena MCP)
 ```
 
 
