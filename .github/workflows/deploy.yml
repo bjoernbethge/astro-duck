@@ -266,7 +266,7 @@ jobs:
       run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
     - name: Notify Discord
-      if: secrets.DISCORD_WEBHOOK_URL
+      if: ${{ secrets.DISCORD_WEBHOOK_URL != '' }}
       run: |
         curl -H "Content-Type: application/json" \
              -X POST \
