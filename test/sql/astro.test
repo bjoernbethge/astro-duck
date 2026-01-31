@@ -165,12 +165,12 @@ SELECT (astro_body_star_ms(1.0)).radius_m > 6.9e8;
 true
 
 query I
-SELECT (astro_body_star_ms(1.0)).body_type = 'main_sequence_star';
+SELECT (astro_body_star_ms(1.0)).body_type = 'star_main_sequence';
 ----
 true
 
 query I
-SELECT (astro_body_star_white_dwarf(0.6)).body_type = 'white_dwarf';
+SELECT (astro_body_star_white_dwarf(0.6)).body_type = 'star_white_dwarf';
 ----
 true
 
@@ -185,17 +185,17 @@ SELECT (astro_body_black_hole(10.0)).radius_m > 0;
 true
 
 query I
-SELECT (astro_body_planet_rocky(1.0)).body_type = 'rocky_planet';
+SELECT (astro_body_planet_rocky(1.0)).body_type = 'planet_rocky';
 ----
 true
 
 query I
-SELECT (astro_body_planet_gas_giant(1.0)).body_type = 'gas_giant';
+SELECT (astro_body_planet_gas_giant(1.0)).body_type = 'planet_gas_giant';
 ----
 true
 
 query I
-SELECT (astro_body_planet_ice_giant(17.0)).body_type = 'ice_giant';
+SELECT (astro_body_planet_ice_giant(17.0)).body_type = 'planet_ice_giant';
 ----
 true
 
