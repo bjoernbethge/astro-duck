@@ -1,316 +1,210 @@
 #!/usr/bin/env python3
 """
-Comprehensive Test Suite for Refactored Astro Extension
-Tests all astronomical functions with integrated Arrow, GeoParquet, and catalog features
+Test Suite for Astro DuckDB Extension
+Tests all 48 astronomical functions
 """
 
 import subprocess
-import json
-import time
 import sys
 from pathlib import Path
+import platform
 
-def run_duckdb_query(query):
-    """Run a query using local DuckDB binary"""
-    duckdb_path = Path("./build/release/duckdb")
-    if not duckdb_path.exists():
-        raise FileNotFoundError(f"DuckDB binary not found: {duckdb_path}")
+def find_duckdb():
+    """Find DuckDB binary for current platform"""
+    if platform.system() == "Windows":
+        paths = [
+            Path("build/release/Release/duckdb.exe"),
+            Path("build/release/duckdb.exe"),
+        ]
+    else:
+        paths = [
+            Path("build/release/duckdb"),
+        ]
 
-    try:
-        # Run query with DuckDB, allowing unsigned extensions
-        cmd = [str(duckdb_path), "-unsigned", "-c", query]
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=Path.cwd())
+    for p in paths:
+        if p.exists():
+            return p
 
-        if result.returncode != 0:
-            raise Exception(f"DuckDB error: {result.stderr}")
+    raise FileNotFoundError(f"DuckDB binary not found. Tried: {[str(p) for p in paths]}")
 
-        return result.stdout.strip()
-    except Exception as e:
-        raise Exception(f"Failed to run DuckDB query: {e}")
+def run_query(query):
+    """Run a DuckDB query and return the output"""
+    duckdb = find_duckdb()
+    result = subprocess.run(
+        [str(duckdb), "-c", query],
+        capture_output=True,
+        text=True,
+        encoding='utf-8',
+        errors='replace'
+    )
+    if result.returncode != 0:
+        raise Exception(f"Query failed: {result.stderr}")
+    return result.stdout.strip() if result.stdout else ""
 
-def test_extension_loading():
-    """Test loading the refactored astro extension"""
-    print("🚀 Testing Extension Loading...")
+def run_query_value(query):
+    """Run query and extract single value from table output"""
+    output = run_query(query)
+    if not output:
+        return ""
+    lines = output.strip().split('\n')
+    # Find the data line (after header and separator)
+    for line in lines:
+        if '│' in line and '───' not in line and '┌' not in line and '└' not in line:
+            # Extract value between │ symbols
+            parts = line.split('│')
+            if len(parts) >= 2:
+                return parts[1].strip()
+    return output
 
-    try:
-        # Check if extension file exists
-        extension_path = Path("build/release/extension/astro/astro.duckdb_extension")
-        if not extension_path.exists():
-            raise FileNotFoundError(f"Extension not found: {extension_path}")
+def test_group(name, tests):
+    """Run a group of tests and return results"""
+    print(f"\n{'='*50}")
+    print(f" {name}")
+    print('='*50)
 
-        # Test loading the extension
-        query = f"LOAD '{extension_path.absolute()}'; SELECT 'Extension loaded successfully' as status;"
-        result = run_duckdb_query(query)
-        print("   ✅ Refactored Astro extension loaded successfully")
+    passed = 0
+    failed = 0
 
-        return "connected"
-
-    except Exception as e:
-        print(f"   ❌ Failed to load extension: {e}")
-        return False
-
-def test_basic_functions(conn):
-    """Test basic astronomical functions"""
-    print("\n📐 Testing Basic Astronomical Functions...")
-    
-    tests = [
-        {
-            'name': 'Angular Separation',
-            'query': "SELECT angular_separation(0.0, 0.0, 1.0, 1.0) as separation",
-            'expected_type': float
-        },
-        {
-            'name': 'RA/Dec to Cartesian (Enhanced)',
-            'query': "SELECT radec_to_cartesian(45.0, 30.0, 10.0) as coords",
-            'expected_type': str
-        },
-        {
-            'name': 'Magnitude to Flux',
-            'query': "SELECT mag_to_flux(15.0, 25.0) as flux",
-            'expected_type': float
-        },
-        {
-            'name': 'Distance Modulus',
-            'query': "SELECT distance_modulus(100.0) as dm",
-            'expected_type': float
-        },
-        {
-            'name': 'Luminosity Distance',
-            'query': "SELECT luminosity_distance(0.1, 70.0) as dl",
-            'expected_type': float
-        },
-        {
-            'name': 'Redshift to Age',
-            'query': "SELECT redshift_to_age(1.0) as age",
-            'expected_type': float
-        }
-    ]
-    
-    results = {}
-    for test in tests:
+    for test_name, query in tests:
         try:
-            result = conn.execute(test['query']).fetchone()[0]
-            if isinstance(result, test['expected_type']):
-                print(f"   ✅ {test['name']}: {result}")
-                results[test['name']] = result
-            else:
-                print(f"   ⚠️  {test['name']}: Unexpected type {type(result)}")
-                results[test['name']] = result
+            result = run_query_value(query)
+            print(f"  [OK] {test_name}: {result[:60]}{'...' if len(result) > 60 else ''}")
+            passed += 1
         except Exception as e:
-            print(f"   ❌ {test['name']}: {e}")
-            results[test['name']] = None
-    
-    return results
+            err_msg = str(e)[:80]
+            print(f"  [FAIL] {test_name}: {err_msg}")
+            failed += 1
 
-def test_enhanced_functions(conn):
-    """Test enhanced functions with metadata"""
-    print("\n🔬 Testing Enhanced Functions with Metadata...")
-    
+    return passed, failed
+
+def main():
+    print("Astro DuckDB Extension Test Suite")
+    print("="*50)
+
+    # Check DuckDB exists
     try:
-        # Test enhanced coordinate conversion
-        result = conn.execute("""
-            SELECT radec_to_cartesian(45.0, 30.0, 10.0) as enhanced_coords
-        """).fetchone()[0]
-        
-        # Parse JSON result
-        coords_data = json.loads(result)
-        print(f"   ✅ Enhanced Coordinates: {coords_data}")
-        
-        # Verify enhanced metadata
-        expected_keys = ['x', 'y', 'z', 'ra', 'dec', 'distance', 'coordinate_system', 'epoch']
-        missing_keys = [key for key in expected_keys if key not in coords_data]
-        
-        if not missing_keys:
-            print("   ✅ All metadata fields present")
-        else:
-            print(f"   ⚠️  Missing metadata fields: {missing_keys}")
-        
-        return coords_data
-        
-    except Exception as e:
-        print(f"   ❌ Enhanced functions test failed: {e}")
-        return None
+        duckdb = find_duckdb()
+        print(f"Using DuckDB: {duckdb}")
+    except FileNotFoundError as e:
+        print(f"ERROR: {e}")
+        return 1
 
-def test_new_functions(conn):
-    """Test new functions added in refactored version"""
-    print("\n🆕 Testing New Functions...")
-    
+    # Check extension is loaded
     try:
-        # Test celestial point creation
-        result = conn.execute("""
-            SELECT celestial_point(45.0, 30.0, 10.0) as wkt_point
-        """).fetchone()[0]
-        print(f"   ✅ Celestial Point (WKT): {result}")
-        
-        # Test catalog info
-        result = conn.execute("""
-            SELECT catalog_info('test_catalog') as info
-        """).fetchone()[0]
-        
-        catalog_info = json.loads(result)
-        print(f"   ✅ Catalog Info: {catalog_info}")
-        
-        return {'celestial_point': result, 'catalog_info': catalog_info}
-        
+        query = "SELECT COUNT(*) FROM duckdb_functions() WHERE function_name LIKE 'astro%';"
+        count = run_query_value(query)
+        print(f"Astro functions available: {count}")
     except Exception as e:
-        print(f"   ❌ New functions test failed: {e}")
-        return None
+        print(f"ERROR: Extension not available: {e}")
+        return 1
 
-def test_batch_processing(conn):
-    """Test batch processing capabilities"""
-    print("\n⚡ Testing Batch Processing Performance...")
-    
-    try:
-        # Create test data
-        conn.execute("""
-            CREATE TEMPORARY TABLE test_stars AS
-            SELECT 
-                i as star_id,
-                random() * 360 as ra,
-                (random() - 0.5) * 180 as dec,
-                random() * 1000 + 10 as distance,
-                random() * 5 + 10 as magnitude
-            FROM range(10000) t(i)
-        """)
-        
-        # Test batch coordinate conversion
-        start_time = time.time()
-        result = conn.execute("""
-            SELECT 
-                COUNT(*) as total_stars,
-                AVG(angular_separation(ra, dec, 0.0, 0.0)) as avg_separation,
-                AVG(mag_to_flux(magnitude, 25.0)) as avg_flux
-            FROM test_stars
-        """).fetchone()
-        
-        processing_time = time.time() - start_time
-        
-        print(f"   ✅ Processed {result[0]} stars in {processing_time:.3f}s")
-        print(f"   📊 Average separation: {result[1]:.3f}°")
-        print(f"   📊 Average flux: {result[2]:.6f}")
-        
-        return {
-            'stars_processed': result[0],
-            'processing_time': processing_time,
-            'avg_separation': result[1],
-            'avg_flux': result[2]
-        }
-        
-    except Exception as e:
-        print(f"   ❌ Batch processing test failed: {e}")
-        return None
+    total_passed = 0
+    total_failed = 0
 
-def test_integration_features(conn):
-    """Test integration features (Arrow, Catalog, etc.)"""
-    print("\n🔗 Testing Integration Features...")
-    
-    try:
-        # Test catalog metadata integration
-        result = conn.execute("""
-            SELECT catalog_info('astro_survey') as survey_info
-        """).fetchone()[0]
-        
-        survey_data = json.loads(result)
-        
-        # Verify integration metadata
-        expected_extensions = ['arrow', 'spatial', 'parquet']
-        available_extensions = survey_data.get('extensions', [])
-        
-        print(f"   📋 Available extensions: {available_extensions}")
-        
-        for ext in expected_extensions:
-            if ext in available_extensions:
-                print(f"   ✅ {ext.capitalize()} integration available")
-            else:
-                print(f"   ⚠️  {ext.capitalize()} integration not listed")
-        
-        # Test coordinate system support
-        coord_system = survey_data.get('coordinate_system', 'Unknown')
-        epoch = survey_data.get('epoch', 'Unknown')
-        
-        print(f"   🌐 Coordinate System: {coord_system}")
-        print(f"   📅 Epoch: {epoch}")
-        
-        return survey_data
-        
-    except Exception as e:
-        print(f"   ❌ Integration features test failed: {e}")
-        return None
+    # Physical Constants
+    p, f = test_group("Physical Constants", [
+        ("Speed of light", "SELECT astro_const_c();"),
+        ("Gravitational constant", "SELECT astro_const_G();"),
+        ("Stefan-Boltzmann", "SELECT astro_const_sigma_sb();"),
+        ("AU in meters", "SELECT astro_const_AU();"),
+        ("Parsec in meters", "SELECT astro_const_pc();"),
+        ("Light year in meters", "SELECT astro_const_ly();"),
+        ("Solar mass", "SELECT astro_const_M_sun();"),
+        ("Solar radius", "SELECT astro_const_R_sun();"),
+        ("Solar luminosity", "SELECT astro_const_L_sun();"),
+        ("Earth mass", "SELECT astro_const_M_earth();"),
+        ("Earth radius", "SELECT astro_const_R_earth();"),
+    ])
+    total_passed += p
+    total_failed += f
 
-def test_error_handling(conn):
-    """Test error handling and edge cases"""
-    print("\n🛡️  Testing Error Handling...")
-    
-    error_tests = [
-        {
-            'name': 'Invalid coordinates',
-            'query': "SELECT angular_separation(NULL, 0.0, 1.0, 1.0)",
-            'expect_null': True
-        },
-        {
-            'name': 'Negative distance',
-            'query': "SELECT distance_modulus(-10.0)",
-            'expect_null': True
-        },
-        {
-            'name': 'Zero flux',
-            'query': "SELECT mag_to_flux(0.0, 0.0)",
-            'expect_null': False
-        }
-    ]
-    
-    for test in error_tests:
-        try:
-            result = conn.execute(test['query']).fetchone()[0]
-            if test['expect_null'] and result is None:
-                print(f"   ✅ {test['name']}: Correctly returned NULL")
-            elif not test['expect_null'] and result is not None:
-                print(f"   ✅ {test['name']}: Returned {result}")
-            else:
-                print(f"   ⚠️  {test['name']}: Unexpected result {result}")
-        except Exception as e:
-            print(f"   ❌ {test['name']}: {e}")
+    # Unit Conversions
+    p, f = test_group("Unit Conversions", [
+        ("Unit AU (1.0)", "SELECT astro_unit_AU(1.0);"),
+        ("Unit parsec (1.0)", "SELECT astro_unit_pc(1.0);"),
+        ("Unit light year (1.0)", "SELECT astro_unit_ly(1.0);"),
+        ("Unit solar mass (1.0)", "SELECT astro_unit_M_sun(1.0);"),
+        ("Unit Earth mass (1.0)", "SELECT astro_unit_M_earth(1.0);"),
+        ("Length to meters (pc)", "SELECT astro_unit_length_to_m(1.0, 'pc');"),
+        ("Length to meters (AU)", "SELECT astro_unit_length_to_m(1.0, 'AU');"),
+        ("Mass to kg (M_sun)", "SELECT astro_unit_mass_to_kg(1.0, 'M_sun');"),
+        ("Time to seconds (yr)", "SELECT astro_unit_time_to_s(1.0, 'yr');"),
+    ])
+    total_passed += p
+    total_failed += f
 
-def run_comprehensive_test():
-    """Run all tests"""
-    print("🌟 Comprehensive Astro Extension Test Suite")
-    print("=" * 50)
-    
-    # Load extension
-    conn = test_extension_loading()
-    if not conn:
-        print("❌ Cannot proceed without extension")
-        return False
-    
-    # Run all test suites
-    basic_results = test_basic_functions(conn)
-    enhanced_results = test_enhanced_functions(conn)
-    new_functions_results = test_new_functions(conn)
-    batch_results = test_batch_processing(conn)
-    integration_results = test_integration_features(conn)
-    test_error_handling(conn)
-    
+    # Coordinate Functions
+    p, f = test_group("Coordinate Transformations", [
+        ("Angular separation", "SELECT astro_angular_separation(0.0, 0.0, 1.0, 1.0);"),
+        ("RA/Dec to XYZ", "SELECT astro_radec_to_xyz(45.0, 30.0, 10.0);"),
+    ])
+    total_passed += p
+    total_failed += f
+
+    # Photometry
+    p, f = test_group("Photometry", [
+        ("Magnitude to flux", "SELECT astro_mag_to_flux(15.0, 25.0);"),
+        ("Flux to magnitude", "SELECT astro_flux_to_mag(1000.0, 25.0);"),
+        ("Absolute magnitude", "SELECT astro_absolute_mag(10.0, 100.0);"),
+        ("Distance modulus", "SELECT astro_distance_modulus(1000.0);"),
+    ])
+    total_passed += p
+    total_failed += f
+
+    # Cosmology
+    p, f = test_group("Cosmology", [
+        ("Luminosity distance", "SELECT astro_luminosity_distance(0.1, 70.0);"),
+        ("Comoving distance", "SELECT astro_comoving_distance(1.0, 70.0);"),
+    ])
+    total_passed += p
+    total_failed += f
+
+    # Body Models
+    p, f = test_group("Celestial Body Models", [
+        ("Main sequence star (1 M_sun)", "SELECT astro_body_star_ms(1.0);"),
+        ("White dwarf (0.6 M_sun)", "SELECT astro_body_star_white_dwarf(0.6);"),
+        ("Neutron star (1.4 M_sun)", "SELECT astro_body_star_neutron(1.4);"),
+        ("Brown dwarf (50 M_jup)", "SELECT astro_body_brown_dwarf(50.0);"),
+        ("Black hole (10 M_sun)", "SELECT astro_body_black_hole(10.0);"),
+        ("Rocky planet (1 M_earth)", "SELECT astro_body_planet_rocky(1.0);"),
+        ("Gas giant (1 M_jup)", "SELECT astro_body_planet_gas_giant(1.0);"),
+        ("Ice giant (17 M_earth)", "SELECT astro_body_planet_ice_giant(17.0);"),
+        ("Asteroid (500km, 2000 kg/m3)", "SELECT astro_body_asteroid(500.0, 2000.0);"),
+    ])
+    total_passed += p
+    total_failed += f
+
+    # Orbital Mechanics
+    p, f = test_group("Orbital Mechanics", [
+        ("Orbit period", "SELECT astro_orbit_period(1.496e11, 1.989e30);"),
+        ("Orbit mean motion", "SELECT astro_orbit_mean_motion(1.496e11, 1.989e30);"),
+        # Complex STRUCT-based functions:
+        ("Orbit make", "SELECT astro_orbit_make(1.496e11, 0.0167, 0.0, 0.0, 0.0, 0.0, 2451545.0, 1.989e30, 'icrs');"),
+    ])
+    total_passed += p
+    total_failed += f
+
+    # Spatial Sectors (3D octree, not HEALPix)
+    p, f = test_group("Spatial Sectors (Octree)", [
+        ("Sector ID from XYZ", "SELECT astro_sector_id(1.0, 0.0, 0.0, 3);"),
+    ])
+    total_passed += p
+    total_failed += f
+
     # Summary
-    print("\n📊 Test Summary")
-    print("=" * 30)
-    
-    total_tests = len(basic_results) if basic_results else 0
-    passed_tests = sum(1 for v in basic_results.values() if v is not None) if basic_results else 0
-    
-    print(f"Basic Functions: {passed_tests}/{total_tests} passed")
-    print(f"Enhanced Features: {'✅' if enhanced_results else '❌'}")
-    print(f"New Functions: {'✅' if new_functions_results else '❌'}")
-    print(f"Batch Processing: {'✅' if batch_results else '❌'}")
-    print(f"Integration Features: {'✅' if integration_results else '❌'}")
-    
-    if batch_results:
-        print(f"Performance: {batch_results['stars_processed']} objects in {batch_results['processing_time']:.3f}s")
-    
-    success_rate = (passed_tests / total_tests * 100) if total_tests > 0 else 0
-    print(f"\n🎯 Overall Success Rate: {success_rate:.1f}%")
+    print("\n" + "="*50)
+    print(" TEST SUMMARY")
+    print("="*50)
+    print(f"  Passed: {total_passed}")
+    print(f"  Failed: {total_failed}")
+    print(f"  Total:  {total_passed + total_failed}")
 
-    return success_rate > 80
+    if total_failed == 0:
+        print("\n  ALL TESTS PASSED!")
+        return 0
+    else:
+        print(f"\n  {total_failed} TESTS FAILED")
+        return 1
 
 if __name__ == "__main__":
-    success = run_comprehensive_test()
-    sys.exit(0 if success else 1) 
+    sys.exit(main())

@@ -43,9 +43,8 @@ LOAD '/path/to/astro.duckdb_extension';
 |----------|-------------|---------|
 | `astro_angular_separation(ra1, dec1, ra2, dec2)` | Angular distance (Haversine) | `SELECT astro_angular_separation(45.0, 30.0, 46.0, 31.0);` |
 | `astro_radec_to_xyz(ra, dec, dist)` | RA/Dec to Cartesian STRUCT | `SELECT astro_radec_to_xyz(45.0, 30.0, 10.0);` |
-| `astro_xyz_to_radec(x, y, z)` | Cartesian to RA/Dec STRUCT | `SELECT astro_xyz_to_radec(1.0, 1.0, 1.0);` |
-| `astro_galactic_to_equatorial(l, b)` | Galactic to RA/Dec STRUCT | `SELECT astro_galactic_to_equatorial(0.0, 0.0);` |
-| `astro_equatorial_to_galactic(ra, dec)` | RA/Dec to Galactic STRUCT | `SELECT astro_equatorial_to_galactic(266.4, -29.0);` |
+| `astro_frame_transform_pos(pos, from, to)` | Transform position between frames | `SELECT astro_frame_transform_pos(pos, 'icrs', 'galactic');` |
+| `astro_frame_transform_vel(vel, from, to)` | Transform velocity between frames | `SELECT astro_frame_transform_vel(vel, 'icrs', 'galactic');` |
 
 ### Photometry
 
@@ -53,22 +52,15 @@ LOAD '/path/to/astro.duckdb_extension';
 |----------|-------------|---------|
 | `astro_mag_to_flux(mag, zp)` | Magnitude to flux | `SELECT astro_mag_to_flux(15.5, 25.0);` |
 | `astro_flux_to_mag(flux, zp)` | Flux to magnitude | `SELECT astro_flux_to_mag(1000.0, 25.0);` |
-| `astro_abs_mag(app_mag, dist_pc)` | Absolute magnitude | `SELECT astro_abs_mag(10.0, 100.0);` |
-| `astro_app_mag(abs_mag, dist_pc)` | Apparent magnitude | `SELECT astro_app_mag(-5.0, 100.0);` |
+| `astro_absolute_mag(app_mag, dist_pc)` | Absolute magnitude | `SELECT astro_absolute_mag(10.0, 100.0);` |
 | `astro_distance_modulus(dist_pc)` | Distance modulus | `SELECT astro_distance_modulus(1000.0);` |
-| `astro_color_index(mag1, mag2)` | Color index (B-V etc.) | `SELECT astro_color_index(12.5, 11.8);` |
-| `astro_extinction_correction(mag, av, rv)` | Apply extinction correction | `SELECT astro_extinction_correction(15.0, 1.0, 3.1);` |
-| `astro_surface_brightness(mag, area_arcsec2)` | Surface brightness | `SELECT astro_surface_brightness(10.0, 100.0);` |
 
 ### Cosmology
 
 | Function | Description | Example |
 |----------|-------------|---------|
 | `astro_luminosity_distance(z, h0)` | Luminosity distance (Mpc) | `SELECT astro_luminosity_distance(0.1, 70.0);` |
-| `astro_angular_diameter_distance(z, h0)` | Angular diameter distance | `SELECT astro_angular_diameter_distance(0.5, 70.0);` |
 | `astro_comoving_distance(z, h0)` | Comoving distance | `SELECT astro_comoving_distance(1.0, 70.0);` |
-| `astro_redshift_to_age(z)` | Universe age at redshift | `SELECT astro_redshift_to_age(1.0);` |
-| `astro_lookback_time(z)` | Lookback time (Gyr) | `SELECT astro_lookback_time(0.5);` |
 
 ### Physical Constants
 
@@ -76,8 +68,6 @@ LOAD '/path/to/astro.duckdb_extension';
 |----------|-------|-------------|
 | `astro_const_c()` | 299792458 m/s | Speed of light |
 | `astro_const_G()` | 6.67430e-11 m³/(kg·s²) | Gravitational constant |
-| `astro_const_h()` | 6.62607015e-34 J·s | Planck constant |
-| `astro_const_k_B()` | 1.380649e-23 J/K | Boltzmann constant |
 | `astro_const_AU()` | 149597870700 m | Astronomical unit |
 | `astro_const_pc()` | 3.0857e16 m | Parsec |
 | `astro_const_ly()` | 9.4607e15 m | Light year |
@@ -92,11 +82,11 @@ LOAD '/path/to/astro.duckdb_extension';
 
 | Function | Description | Example |
 |----------|-------------|---------|
-| `astro_unit_AU()` | Returns 1 AU in meters | `SELECT astro_unit_AU();` |
-| `astro_unit_pc()` | Returns 1 parsec in meters | `SELECT astro_unit_pc();` |
-| `astro_unit_ly()` | Returns 1 light-year in meters | `SELECT astro_unit_ly();` |
-| `astro_unit_M_sun()` | Returns 1 solar mass in kg | `SELECT astro_unit_M_sun();` |
-| `astro_unit_M_earth()` | Returns 1 Earth mass in kg | `SELECT astro_unit_M_earth();` |
+| `astro_unit_AU(n)` | n AU in meters | `SELECT astro_unit_AU(1.0);` |
+| `astro_unit_pc(n)` | n parsec in meters | `SELECT astro_unit_pc(1.0);` |
+| `astro_unit_ly(n)` | n light-years in meters | `SELECT astro_unit_ly(1.0);` |
+| `astro_unit_M_sun(n)` | n solar masses in kg | `SELECT astro_unit_M_sun(1.0);` |
+| `astro_unit_M_earth(n)` | n Earth masses in kg | `SELECT astro_unit_M_earth(1.0);` |
 | `astro_unit_length_to_m(val, unit)` | Convert length to meters | `SELECT astro_unit_length_to_m(1.0, 'pc');` |
 | `astro_unit_mass_to_kg(val, unit)` | Convert mass to kg | `SELECT astro_unit_mass_to_kg(1.0, 'M_sun');` |
 | `astro_unit_time_to_s(val, unit)` | Convert time to seconds | `SELECT astro_unit_time_to_s(1.0, 'yr');` |
@@ -117,17 +107,30 @@ Returns STRUCT with: `mass_kg`, `radius_m`, `temperature_K`, `luminosity_W`, `de
 | `astro_body_planet_ice_giant(mass_M_earth)` | Ice giant (Neptune-like) | `SELECT astro_body_planet_ice_giant(17.0);` |
 | `astro_body_asteroid(radius_km, density)` | Asteroid from size/density | `SELECT astro_body_asteroid(500, 2000);` |
 
-### Utility Functions
+### Orbital Mechanics
 
 | Function | Description | Example |
 |----------|-------------|---------|
-| `astro_parallax_to_distance(parallax_mas)` | Parallax to distance (pc) | `SELECT astro_parallax_to_distance(10.0);` |
-| `astro_distance_to_parallax(dist_pc)` | Distance to parallax (mas) | `SELECT astro_distance_to_parallax(100.0);` |
-| `astro_schwarzschild_radius(mass_kg)` | Schwarzschild radius | `SELECT astro_schwarzschild_radius(1.989e30);` |
-| `astro_escape_velocity(mass_kg, radius_m)` | Escape velocity (m/s) | `SELECT astro_escape_velocity(5.972e24, 6.371e6);` |
-| `astro_orbital_period(a_m, M_kg)` | Kepler orbital period (s) | `SELECT astro_orbital_period(1.496e11, 1.989e30);` |
-| `astro_orbital_velocity(a_m, M_kg)` | Circular orbital velocity | `SELECT astro_orbital_velocity(1.496e11, 1.989e30);` |
-| `astro_version()` | Extension version | `SELECT astro_version();` |
+| `astro_orbit_period(a_m, M_kg)` | Kepler orbital period (s) | `SELECT astro_orbit_period(1.496e11, 1.989e30);` |
+| `astro_orbit_mean_motion(a_m, M_kg)` | Mean motion (rad/s) | `SELECT astro_orbit_mean_motion(1.496e11, 1.989e30);` |
+| `astro_orbit_make(a, e, i, omega, w, M0, epoch, M, frame)` | Create orbit STRUCT | See examples below |
+| `astro_orbit_position(orbit, t)` | Position at time t | `SELECT astro_orbit_position(orbit, 2451545.0);` |
+| `astro_orbit_velocity(orbit, t)` | Velocity at time t | `SELECT astro_orbit_velocity(orbit, 2451545.0);` |
+
+### Spatial Sectors (3D Octree)
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `astro_sector_id(x, y, z, level)` | Get sector ID for position | `SELECT astro_sector_id(1.0, 0.0, 0.0, 3);` |
+| `astro_sector_center(sector)` | Get sector center position | `SELECT astro_sector_center(sector);` |
+| `astro_sector_bounds(sector)` | Get sector bounding box | `SELECT astro_sector_bounds(sector);` |
+| `astro_sector_parent(sector)` | Get parent sector | `SELECT astro_sector_parent(sector);` |
+
+### Dynamics
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `astro_dyn_gravity_accel(m1, pos1, m2, pos2)` | Gravitational acceleration | See examples below |
 
 ### Function Details
 
@@ -137,12 +140,6 @@ Returns STRUCT with: `mass_kg`, `radius_m`, `temperature_K`, `luminosity_W`, `de
 ```sql
 SELECT astro_radec_to_xyz(45.0, 30.0, 10.0);
 -- {'x': 6.123724356957945, 'y': 6.123724356957946, 'z': 4.999999999999999}
-```
-
-**`astro_galactic_to_equatorial(l, b)`** converts Galactic coordinates:
-```sql
-SELECT astro_galactic_to_equatorial(0.0, 0.0);
--- {'ra': 266.405, 'dec': -28.936}  (Galactic center direction)
 ```
 
 #### Body Models
