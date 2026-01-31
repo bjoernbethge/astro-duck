@@ -4,7 +4,7 @@ Comprehensive astronomical calculations and coordinate transformations for DuckD
 
 [![Build Status](https://github.com/bjoernbethge/astro-duck/workflows/CI/badge.svg)](https://github.com/bjoernbethge/astro-duck/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![DuckDB](https://img.shields.io/badge/DuckDB-v1.3.0-blue.svg)](https://duckdb.org/)
+[![DuckDB](https://img.shields.io/badge/DuckDB-v1.4.3-blue.svg)](https://duckdb.org/)
 
 ## 🚀 Quick Start
 
@@ -14,7 +14,10 @@ INSTALL astro FROM community;
 LOAD astro;
 
 -- Calculate angular separation between two stars
-SELECT angular_separation(45.0, 30.0, 46.0, 31.0) as separation_degrees;
+SELECT astro_angular_separation(45.0, 30.0, 46.0, 31.0) as separation_degrees;
+
+-- Get physical properties of a Sun-like star
+SELECT astro_body_star_ms(1.0);
 ```
 
 ### Manual Installation
@@ -32,89 +35,141 @@ LOAD '/path/to/astro.duckdb_extension';
 - **🌌 Cosmological Calculations**: Luminosity distance, redshift to age
 - **🔗 Modern Integrations**: Arrow, Spatial, and Catalog compatibility
 
-## 📊 Functions
+## 📊 Functions (48 total)
 
-| Function | Description | Parameters | Output | Example |
-|----------|-------------|------------|--------|---------|
-| `angular_separation(ra1, dec1, ra2, dec2)` | Angular distance between celestial objects | 4 DOUBLE | DOUBLE (degrees) | `SELECT angular_separation(45.0, 30.0, 46.0, 31.0);` |
-| `radec_to_cartesian(ra, dec, distance)` | Coordinate conversion with metadata | 3 DOUBLE | JSON VARCHAR | `SELECT radec_to_cartesian(45.0, 30.0, 10.0);` |
-| `mag_to_flux(magnitude, zero_point)` | Photometric conversions | 2 DOUBLE | DOUBLE | `SELECT mag_to_flux(15.5, 25.0);` |
-| `distance_modulus(distance_pc)` | Distance modulus calculations | 1 DOUBLE | DOUBLE | `SELECT distance_modulus(1000.0);` |
-| `luminosity_distance(redshift, h0)` | Cosmological distances | 2 DOUBLE | DOUBLE (Mpc) | `SELECT luminosity_distance(0.1, 70.0);` |
-| `redshift_to_age(redshift)` | Universe age calculations | 1 DOUBLE | DOUBLE (Gyr) | `SELECT redshift_to_age(1.0);` |
-| `celestial_point(ra, dec, distance)` | WKT geometry creation | 3 DOUBLE | WKT VARCHAR | `SELECT celestial_point(45.0, 30.0, 10.0);` |
-| `catalog_info(catalog_name)` | Extension metadata | 1 VARCHAR | JSON VARCHAR | `SELECT catalog_info('my_catalog');` |
+### Coordinate Transformations
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `astro_angular_separation(ra1, dec1, ra2, dec2)` | Angular distance (Haversine) | `SELECT astro_angular_separation(45.0, 30.0, 46.0, 31.0);` |
+| `astro_radec_to_xyz(ra, dec, dist)` | RA/Dec to Cartesian STRUCT | `SELECT astro_radec_to_xyz(45.0, 30.0, 10.0);` |
+| `astro_xyz_to_radec(x, y, z)` | Cartesian to RA/Dec STRUCT | `SELECT astro_xyz_to_radec(1.0, 1.0, 1.0);` |
+| `astro_galactic_to_equatorial(l, b)` | Galactic to RA/Dec STRUCT | `SELECT astro_galactic_to_equatorial(0.0, 0.0);` |
+| `astro_equatorial_to_galactic(ra, dec)` | RA/Dec to Galactic STRUCT | `SELECT astro_equatorial_to_galactic(266.4, -29.0);` |
+
+### Photometry
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `astro_mag_to_flux(mag, zp)` | Magnitude to flux | `SELECT astro_mag_to_flux(15.5, 25.0);` |
+| `astro_flux_to_mag(flux, zp)` | Flux to magnitude | `SELECT astro_flux_to_mag(1000.0, 25.0);` |
+| `astro_abs_mag(app_mag, dist_pc)` | Absolute magnitude | `SELECT astro_abs_mag(10.0, 100.0);` |
+| `astro_app_mag(abs_mag, dist_pc)` | Apparent magnitude | `SELECT astro_app_mag(-5.0, 100.0);` |
+| `astro_distance_modulus(dist_pc)` | Distance modulus | `SELECT astro_distance_modulus(1000.0);` |
+| `astro_color_index(mag1, mag2)` | Color index (B-V etc.) | `SELECT astro_color_index(12.5, 11.8);` |
+| `astro_extinction_correction(mag, av, rv)` | Apply extinction correction | `SELECT astro_extinction_correction(15.0, 1.0, 3.1);` |
+| `astro_surface_brightness(mag, area_arcsec2)` | Surface brightness | `SELECT astro_surface_brightness(10.0, 100.0);` |
+
+### Cosmology
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `astro_luminosity_distance(z, h0)` | Luminosity distance (Mpc) | `SELECT astro_luminosity_distance(0.1, 70.0);` |
+| `astro_angular_diameter_distance(z, h0)` | Angular diameter distance | `SELECT astro_angular_diameter_distance(0.5, 70.0);` |
+| `astro_comoving_distance(z, h0)` | Comoving distance | `SELECT astro_comoving_distance(1.0, 70.0);` |
+| `astro_redshift_to_age(z)` | Universe age at redshift | `SELECT astro_redshift_to_age(1.0);` |
+| `astro_lookback_time(z)` | Lookback time (Gyr) | `SELECT astro_lookback_time(0.5);` |
+
+### Physical Constants
+
+| Function | Value | Description |
+|----------|-------|-------------|
+| `astro_const_c()` | 299792458 m/s | Speed of light |
+| `astro_const_G()` | 6.67430e-11 m³/(kg·s²) | Gravitational constant |
+| `astro_const_h()` | 6.62607015e-34 J·s | Planck constant |
+| `astro_const_k_B()` | 1.380649e-23 J/K | Boltzmann constant |
+| `astro_const_AU()` | 149597870700 m | Astronomical unit |
+| `astro_const_pc()` | 3.0857e16 m | Parsec |
+| `astro_const_ly()` | 9.4607e15 m | Light year |
+| `astro_const_M_sun()` | 1.989e30 kg | Solar mass |
+| `astro_const_R_sun()` | 6.957e8 m | Solar radius |
+| `astro_const_L_sun()` | 3.828e26 W | Solar luminosity |
+| `astro_const_M_earth()` | 5.972e24 kg | Earth mass |
+| `astro_const_R_earth()` | 6.371e6 m | Earth radius |
+| `astro_const_sigma_sb()` | 5.670374e-8 W/(m²·K⁴) | Stefan-Boltzmann constant |
+
+### Unit Conversions
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `astro_unit_AU()` | Returns 1 AU in meters | `SELECT astro_unit_AU();` |
+| `astro_unit_pc()` | Returns 1 parsec in meters | `SELECT astro_unit_pc();` |
+| `astro_unit_ly()` | Returns 1 light-year in meters | `SELECT astro_unit_ly();` |
+| `astro_unit_M_sun()` | Returns 1 solar mass in kg | `SELECT astro_unit_M_sun();` |
+| `astro_unit_M_earth()` | Returns 1 Earth mass in kg | `SELECT astro_unit_M_earth();` |
+| `astro_unit_length_to_m(val, unit)` | Convert length to meters | `SELECT astro_unit_length_to_m(1.0, 'pc');` |
+| `astro_unit_mass_to_kg(val, unit)` | Convert mass to kg | `SELECT astro_unit_mass_to_kg(1.0, 'M_sun');` |
+| `astro_unit_time_to_s(val, unit)` | Convert time to seconds | `SELECT astro_unit_time_to_s(1.0, 'yr');` |
+
+### Celestial Body Models
+
+Returns STRUCT with: `mass_kg`, `radius_m`, `temperature_K`, `luminosity_W`, `density_kg_m3`, `body_type`
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `astro_body_star_ms(mass_M_sun)` | Main sequence star | `SELECT astro_body_star_ms(1.0);` |
+| `astro_body_star_white_dwarf(mass_M_sun)` | White dwarf (Chandrasekhar) | `SELECT astro_body_star_white_dwarf(0.6);` |
+| `astro_body_star_neutron(mass_M_sun)` | Neutron star (~11km radius) | `SELECT astro_body_star_neutron(1.4);` |
+| `astro_body_brown_dwarf(mass_M_jup)` | Brown dwarf (13-80 M_jup) | `SELECT astro_body_brown_dwarf(50.0);` |
+| `astro_body_black_hole(mass_M_sun)` | Black hole (Schwarzschild) | `SELECT astro_body_black_hole(10.0);` |
+| `astro_body_planet_rocky(mass_M_earth)` | Rocky planet | `SELECT astro_body_planet_rocky(1.0);` |
+| `astro_body_planet_gas_giant(mass_M_jup)` | Gas giant (Jupiter-like) | `SELECT astro_body_planet_gas_giant(1.0);` |
+| `astro_body_planet_ice_giant(mass_M_earth)` | Ice giant (Neptune-like) | `SELECT astro_body_planet_ice_giant(17.0);` |
+| `astro_body_asteroid(radius_km, density)` | Asteroid from size/density | `SELECT astro_body_asteroid(500, 2000);` |
+
+### Utility Functions
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `astro_parallax_to_distance(parallax_mas)` | Parallax to distance (pc) | `SELECT astro_parallax_to_distance(10.0);` |
+| `astro_distance_to_parallax(dist_pc)` | Distance to parallax (mas) | `SELECT astro_distance_to_parallax(100.0);` |
+| `astro_schwarzschild_radius(mass_kg)` | Schwarzschild radius | `SELECT astro_schwarzschild_radius(1.989e30);` |
+| `astro_escape_velocity(mass_kg, radius_m)` | Escape velocity (m/s) | `SELECT astro_escape_velocity(5.972e24, 6.371e6);` |
+| `astro_orbital_period(a_m, M_kg)` | Kepler orbital period (s) | `SELECT astro_orbital_period(1.496e11, 1.989e30);` |
+| `astro_orbital_velocity(a_m, M_kg)` | Circular orbital velocity | `SELECT astro_orbital_velocity(1.496e11, 1.989e30);` |
+| `astro_version()` | Extension version | `SELECT astro_version();` |
 
 ### Function Details
 
-#### `angular_separation(ra1, dec1, ra2, dec2)`
-Calculates angular separation between two celestial objects using the Haversine formula.
-- **Parameters**: ra1, dec1, ra2, dec2 (all in degrees)
-- **Returns**: Angular separation in degrees
-- **Example**: `1.414177660952114` degrees
+#### Coordinate Functions
 
-#### `radec_to_cartesian(ra, dec, distance)`
-Converts RA/Dec coordinates to Cartesian with full metadata.
-- **Parameters**: ra, dec (degrees), distance (any unit)
-- **Returns**: JSON with x, y, z coordinates and metadata
-- **Example**: 
-```json
-{
-  "x": 6.12372436,
-  "y": 6.12372436, 
-  "z": 5.00000000,
-  "ra": 45.00000000,
-  "dec": 30.00000000,
-  "distance": 10.00000000,
-  "coordinate_system": "ICRS",
-  "epoch": 2000.0
-}
+**`astro_radec_to_xyz(ra, dec, distance)`** returns a STRUCT:
+```sql
+SELECT astro_radec_to_xyz(45.0, 30.0, 10.0);
+-- {'x': 6.123724356957945, 'y': 6.123724356957946, 'z': 4.999999999999999}
 ```
 
-#### `mag_to_flux(magnitude, zero_point)`
-Converts astronomical magnitude to flux.
-- **Parameters**: magnitude, zero_point
-- **Returns**: Flux value
-- **Formula**: `10^((zero_point - magnitude) / 2.5)`
+**`astro_galactic_to_equatorial(l, b)`** converts Galactic coordinates:
+```sql
+SELECT astro_galactic_to_equatorial(0.0, 0.0);
+-- {'ra': 266.405, 'dec': -28.936}  (Galactic center direction)
+```
 
-#### `distance_modulus(distance_pc)`
-Calculates distance modulus from distance in parsecs.
-- **Parameters**: distance_pc (distance in parsecs)
-- **Returns**: Distance modulus in magnitudes
-- **Formula**: `5 * log10(distance_pc) - 5`
+#### Body Models
 
-#### `luminosity_distance(redshift, h0)`
-Calculates luminosity distance from redshift.
-- **Parameters**: redshift, h0 (Hubble constant in km/s/Mpc)
-- **Returns**: Luminosity distance in Mpc
-- **Note**: Uses simplified cosmology (matter-dominated universe)
+Each body function returns a STRUCT with physical properties:
+```sql
+SELECT astro_body_star_ms(1.0);  -- Sun-like star
+-- {'mass_kg': 1.989e+30, 'radius_m': 6.957e+08, 'temperature_K': 5778.0,
+--  'luminosity_W': 3.828e+26, 'density_kg_m3': 1408.0, 'body_type': 'main_sequence_star'}
 
-#### `redshift_to_age(redshift)`
-Calculates universe age at given redshift.
-- **Parameters**: redshift
-- **Returns**: Age in Gyr (billion years)
-- **Note**: Uses Hubble constant of 70 km/s/Mpc
+SELECT astro_body_black_hole(10.0);  -- 10 solar mass black hole
+-- {'mass_kg': 1.989e+31, 'radius_m': 29541.0, 'temperature_K': 0.0,
+--  'luminosity_W': 0.0, 'density_kg_m3': 1.83e+18, 'body_type': 'black_hole'}
+```
 
-#### `celestial_point(ra, dec, distance)`
-Creates WKT POINT Z geometry from celestial coordinates.
-- **Parameters**: ra, dec (degrees), distance
-- **Returns**: WKT string `POINT Z(x y z)`
-- **Example**: `POINT Z(6.12372436 6.12372436 5.00000000)`
+#### Unit Conversions
 
-#### `catalog_info(catalog_name)`
-Returns metadata about astronomical catalog.
-- **Parameters**: catalog_name (string)
-- **Returns**: JSON with catalog metadata
-- **Example**:
-```json
-{
-  "catalog": "my_catalog",
-  "version": "1.0.0",
-  "coordinate_system": "ICRS",
-  "epoch": 2000.0,
-  "supported_functions": ["angular_separation", "radec_to_cartesian", "mag_to_flux", "distance_modulus", "luminosity_distance", "redshift_to_age"],
-  "extensions": ["arrow", "spatial", "parquet"]
-}
+Flexible unit conversion with string identifiers:
+```sql
+-- Length: 'AU', 'pc', 'ly', 'km', 'm'
+SELECT astro_unit_length_to_m(1.0, 'pc');  -- 3.0857e16
+
+-- Mass: 'M_sun', 'M_earth', 'M_jup', 'kg'
+SELECT astro_unit_mass_to_kg(1.0, 'M_sun');  -- 1.989e30
+
+-- Time: 'yr', 'day', 'hr', 's'
+SELECT astro_unit_time_to_s(1.0, 'yr');  -- 3.1557e7
 ```
 
 ## 🏗️ Building from Source
@@ -147,60 +202,71 @@ python test_astro.py
 
 ## 🔧 Integration Examples
 
-### With Spatial Extension
+### Coordinate Transformations
 ```sql
-LOAD spatial;
 LOAD astro;
 
--- Create spatial points from astronomical coordinates
-SELECT 
+-- Convert catalog coordinates to Cartesian
+SELECT
     name,
-    celestial_point(ra, dec, distance) as geometry,
-    angular_separation(ra, dec, 0, 0) as distance_from_origin
+    astro_radec_to_xyz(ra, dec, astro_parallax_to_distance(parallax)) as xyz
 FROM stars;
 
 -- Query objects within angular distance
 SELECT name, ra, dec
-FROM stars 
-WHERE angular_separation(ra, dec, 180.0, 0.0) < 5.0;
+FROM stars
+WHERE astro_angular_separation(ra, dec, 180.0, 0.0) < 5.0;
+
+-- Convert between coordinate systems
+SELECT
+    astro_equatorial_to_galactic(ra, dec) as galactic,
+    astro_galactic_to_equatorial(l, b) as equatorial
+FROM coordinates;
 ```
 
-### With Arrow Format
+### Photometry Pipeline
 ```sql
 LOAD astro;
 
--- Export astronomical calculations to Arrow with enhanced metadata
-COPY (
-    SELECT 
-        object_id,
-        radec_to_cartesian(ra, dec, distance) as coordinates,
-        mag_to_flux(magnitude, 25.0) as flux,
-        distance_modulus(distance_pc) as dist_mod
-    FROM catalog
-) TO 'astronomical_data.arrow' (FORMAT ARROW);
+-- Complete photometric analysis
+SELECT
+    object_id,
+    astro_mag_to_flux(mag_g, 25.0) as flux_g,
+    astro_abs_mag(mag_g, astro_parallax_to_distance(parallax)) as abs_mag,
+    astro_color_index(mag_b, mag_v) as bv_color,
+    astro_extinction_correction(mag_v, av, 3.1) as mag_v_corrected
+FROM photometry;
 ```
 
 ### Cosmological Calculations
 ```sql
 -- Calculate universe properties at different redshifts
-SELECT 
-    redshift,
-    luminosity_distance(redshift, 70.0) as lum_dist_mpc,
-    redshift_to_age(redshift) as age_gyr
-FROM generate_series(0.1, 2.0, 0.1) as t(redshift);
+SELECT
+    z as redshift,
+    astro_luminosity_distance(z, 70.0) as lum_dist_mpc,
+    astro_comoving_distance(z, 70.0) as comoving_mpc,
+    astro_lookback_time(z) as lookback_gyr,
+    astro_redshift_to_age(z) as age_gyr
+FROM generate_series(0.1, 2.0, 0.1) as t(z);
 ```
 
-### Catalog Management
+### Body Model Analysis
 ```sql
--- Get catalog metadata and supported features
-SELECT catalog_info('gaia_dr3') as metadata;
+-- Compare different stellar remnants
+SELECT
+    mass,
+    (astro_body_star_white_dwarf(mass)).radius_m / 1000 as wd_radius_km,
+    (astro_body_star_neutron(mass)).radius_m / 1000 as ns_radius_km,
+    (astro_body_black_hole(mass)).radius_m / 1000 as bh_radius_km
+FROM generate_series(0.5, 2.0, 0.1) as t(mass);
 
--- Batch coordinate conversion with metadata
-SELECT 
-    source_id,
-    radec_to_cartesian(ra, dec, parallax_distance) as enhanced_coords
-FROM gaia_catalog 
-LIMIT 1000;
+-- Exoplanet characterization
+SELECT
+    name,
+    astro_body_planet_rocky(mass_earth) as rocky_model,
+    astro_body_planet_gas_giant(mass_earth / 318.0) as gas_model
+FROM exoplanets
+WHERE mass_earth < 10;
 ```
 
 ## 📚 Documentation
