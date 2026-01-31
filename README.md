@@ -148,7 +148,7 @@ Each body function returns a STRUCT with physical properties:
 ```sql
 SELECT astro_body_star_ms(1.0);  -- Sun-like star
 -- {'mass_kg': 1.989e+30, 'radius_m': 6.957e+08, 'temperature_K': 5778.0,
---  'luminosity_W': 3.828e+26, 'density_kg_m3': 1408.0, 'body_type': 'main_sequence_star'}
+--  'luminosity_W': 3.828e+26, 'density_kg_m3': 1408.0, 'body_type': 'star_main_sequence'}
 
 SELECT astro_body_black_hole(10.0);  -- 10 solar mass black hole
 -- {'mass_kg': 1.989e+31, 'radius_m': 29541.0, 'temperature_K': 0.0,
