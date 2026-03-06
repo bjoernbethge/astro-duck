@@ -5,6 +5,7 @@ Comprehensive astronomical calculations and coordinate transformations for DuckD
 [![Build Status](https://github.com/bjoernbethge/astro-duck/workflows/CI/badge.svg)](https://github.com/bjoernbethge/astro-duck/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![DuckDB](https://img.shields.io/badge/DuckDB-v1.4.3-blue.svg)](https://duckdb.org/)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/synapticore-io/astro-duck)
 
 ## 🚀 Quick Start
 
@@ -35,7 +36,7 @@ LOAD '/path/to/astro.duckdb_extension';
 - **🌌 Cosmological Calculations**: Luminosity distance, redshift to age
 - **🔗 Modern Integrations**: Arrow, Spatial, and Catalog compatibility
 
-## 📊 Functions (48 total)
+## 📊 Functions (57 signatures)
 
 ### Coordinate Transformations
 
@@ -54,6 +55,23 @@ LOAD '/path/to/astro.duckdb_extension';
 | `astro_flux_to_mag(flux, zp)` | Flux to magnitude | `SELECT astro_flux_to_mag(1000.0, 25.0);` |
 | `astro_absolute_mag(app_mag, dist_pc)` | Absolute magnitude | `SELECT astro_absolute_mag(10.0, 100.0);` |
 | `astro_distance_modulus(dist_pc)` | Distance modulus | `SELECT astro_distance_modulus(1000.0);` |
+
+### Dust Extinction (CCM89)
+
+Interstellar dust extinction using the Cardelli, Clayton & Mathis (1989) extinction law with O'Donnell (1994) optical coefficients.
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `astro_extinction_av(ebv, [rv=3.1])` | A_V from E(B-V) and R_V | `SELECT astro_extinction_av(0.5);` |
+| `astro_extinction_alambda(λ_Å, av, [rv=3.1])` | Extinction at wavelength | `SELECT astro_extinction_alambda(5494.5, 1.0);` |
+| `astro_extinction_band(band, av, [rv=3.1])` | Extinction in photometric band | `SELECT astro_extinction_band('V', 1.0);` |
+| `astro_mag_deredden(mag, extinction)` | Correct magnitude for extinction | `SELECT astro_mag_deredden(15.5, 1.25);` |
+| `astro_flux_deredden(flux, extinction)` | Correct flux for extinction | `SELECT astro_flux_deredden(1000.0, 1.0);` |
+| `astro_color_excess(mag1, mag2, intrinsic)` | Calculate color excess | `SELECT astro_color_excess(12.5, 11.8, 0.3);` |
+
+**Default R_V=3.1** corresponds to the average for the Milky Way diffuse ISM.
+
+**Supported photometric bands**: U (3650Å), B (4400Å), V (5494.5Å), R (6580Å), I (8060Å), J (12350Å), H (16620Å), K (21590Å)
 
 ### Cosmology
 
@@ -225,14 +243,23 @@ FROM coordinates;
 ```sql
 LOAD astro;
 
--- Complete photometric analysis
+-- Complete photometric analysis with dust extinction correction
 SELECT
     object_id,
-    astro_mag_to_flux(mag_g, 25.0) as flux_g,
-    astro_abs_mag(mag_g, astro_parallax_to_distance(parallax)) as abs_mag,
-    astro_color_index(mag_b, mag_v) as bv_color,
-    astro_extinction_correction(mag_v, av, 3.1) as mag_v_corrected
+    mag_v,
+    -- Calculate A_V from E(B-V) reddening
+    astro_extinction_av(ebv, 3.1) as A_V,
+    -- Get extinction in each band
+    astro_extinction_band('V', astro_extinction_av(ebv, 3.1), 3.1) as A_V_band,
+    astro_extinction_band('B', astro_extinction_av(ebv, 3.1), 3.1) as A_B_band,
+    -- Deredden the observed magnitude
+    astro_mag_deredden(mag_v, astro_extinction_band('V', astro_extinction_av(ebv, 3.1), 3.1)) as mag_v_dereddened,
+    -- Convert to flux and deredden
+    astro_flux_deredden(astro_mag_to_flux(mag_v, 25.0), astro_extinction_band('V', astro_extinction_av(ebv, 3.1), 3.1)) as flux_v_dereddened
 FROM photometry;
+
+-- Extinction at specific wavelength (H-alpha = 6563 Å)
+SELECT astro_extinction_alambda(6563, 1.55, 3.1) as A_Halpha;
 ```
 
 ### Cosmological Calculations
