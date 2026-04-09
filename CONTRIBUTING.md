@@ -53,22 +53,23 @@ python test_astro.py
 ### Example Function Addition
 ```cpp
 // In astro.hpp
-double MyAstroFunction(double param1, double param2);
+static void AstroMyFunction(DataChunk &args, ExpressionState &state, Vector &result);
 
 // In astro.cpp
-double MyAstroFunction(double param1, double param2) {
-    // Validate inputs
-    if (param1 < 0 || param2 < 0) {
-        throw std::invalid_argument("Parameters must be non-negative");
-    }
-    
-    // Perform calculation
-    return param1 * param2; // Your calculation here
+static void AstroMyFunction(DataChunk &args, ExpressionState &state, Vector &result) {
+    auto &p1_vec = args.data[0];
+    auto &p2_vec = args.data[1];
+    BinaryExecutor::Execute<double, double, double>(
+        p1_vec, p2_vec, result, args.size(),
+        [](double p1, double p2) { return p1 * p2; });
 }
 
-// Register in LoadInternal()
-CreateScalarFunction("my_astro_function", {LogicalType::DOUBLE, LogicalType::DOUBLE}, 
-                     LogicalType::DOUBLE, MyAstroFunction);
+// Register in LoadInternal() using the ExtensionLoader
+loader.RegisterFunction(ScalarFunction(
+    "astro_my_function",
+    {LogicalType::DOUBLE, LogicalType::DOUBLE},
+    LogicalType::DOUBLE,
+    AstroMyFunction));
 ```
 
 ## 🧪 Testing

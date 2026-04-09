@@ -8,7 +8,7 @@
 - Language: C++ (C++17 required)
 - Project Type: DuckDB Extension
 - Size: Small (~10 source files + submodules)
-- Target Runtime: DuckDB v1.3.0 (configurable via extension_config.cmake)
+- Target Runtime: DuckDB v1.4.3 (configurable via extension_config.cmake)
 - Frameworks: CMake build system, DuckDB extension API
 
 ## Critical Build Requirements
@@ -81,13 +81,13 @@ python test_astro.py    # Comprehensive test suite
 ### Root Directory Files
 - `Makefile`: Main build orchestrator (includes extension-ci-tools makefiles)
 - `CMakeLists.txt`: Extension-specific CMake configuration
-- `extension_config.cmake`: Defines extension version (v1.0.0), DuckDB version (v1.3.0), and build configuration
+- `extension_config.cmake`: Defines extension version (v1.1.0), DuckDB version (v1.4.3), and build configuration
 - `test_astro.py`: Comprehensive Python test suite for all functions
 - `.gitmodules`: Submodule configuration (duckdb, extension-ci-tools)
 - `.gitignore`: Excludes build/, duckdb/, *.duckdb_extension, Python cache
 
 ### Source Code (`src/`)
-- `src/astro.cpp`: Main implementation (~380 lines) containing all astronomical functions
+- `src/astro.cpp`: Main implementation (~1150 lines) containing all astronomical functions
 - `src/include/astro.hpp`: Function declarations and extension header
 - `src/include/astro_extension.hpp`: DuckDB extension interface
 
@@ -101,15 +101,24 @@ python test_astro.py    # Comprehensive test suite
 - `docs/UPDATING.md`: Guide for updating DuckDB version and handling API changes
 - `docs/README.md`: Additional documentation
 
-### Key Functions Implemented
-1. `angular_separation(ra1, dec1, ra2, dec2)` - Haversine formula for angular distance
-2. `radec_to_cartesian(ra, dec, distance)` - Coordinate conversion with JSON metadata
-3. `mag_to_flux(magnitude, zero_point)` - Photometric conversion
-4. `distance_modulus(distance_pc)` - Distance modulus calculation
-5. `luminosity_distance(redshift, h0)` - Cosmological distance
-6. `redshift_to_age(redshift)` - Universe age calculation
-7. `celestial_point(ra, dec, distance)` - WKT geometry creation
-8. `catalog_info(catalog_name)` - Catalog metadata (JSON)
+### Function Categories
+
+All scalar functions are prefixed with `astro_` and registered via
+`loader.RegisterFunction(ScalarFunction(...))` in `LoadInternal()`. 48+ functions
+covering:
+
+- Physical constants (`astro_const_*`) and unit conversions (`astro_unit_*`)
+- Coordinate transforms (`astro_radec_to_xyz`, `astro_frame_transform_pos/vel`)
+- Angular geometry (`astro_angular_separation`)
+- Photometry (`astro_mag_to_flux`, `astro_flux_to_mag`, `astro_absolute_mag`, `astro_distance_modulus`)
+- Dust extinction CCM89 (`astro_extinction_*`, `astro_mag_deredden`, `astro_flux_deredden`)
+- Cosmology (`astro_luminosity_distance`, `astro_comoving_distance`)
+- Celestial body models (`astro_body_*`)
+- Orbital mechanics (`astro_orbit_*`)
+- 3D octree spatial sectors (`astro_sector_*`)
+- Dynamics (`astro_dyn_gravity_accel`)
+
+See the function tables in `README.md` for the full reference.
 
 ### Configuration Files
 - `.clang-format`, `.clang-tidy`, `.editorconfig`: All symlinked to `duckdb/` versions (follow DuckDB style)
@@ -117,9 +126,9 @@ python test_astro.py    # Comprehensive test suite
 
 ### CI/CD Workflows (`.github/workflows/`)
 - `MainDistributionPipeline.yml`: Main CI using duckdb/extension-ci-tools (builds for all platforms)
-  - **Note:** CI uses `duckdb_version: v1.4-andium` branch for CI tools, which may be newer than the extension's target DuckDB version (v1.3.0 in extension_config.cmake). This is intentional - the CI build uses a compatible newer version for testing.
+  - Builds against DuckDB stable (currently v1.4.3, matching `extension_config.cmake`).
 - `ExtensionTemplate.yml`: Template testing workflow (can be ignored for astro extension)
-- `deploy.yml`: Multi-platform deployment workflow (GitHub/S3/Community)
+- `deploy.yml.disabled`: Multi-platform deployment workflow (currently disabled — distribution goes through `duckdb/community-extensions`)
 
 **CI Build Configuration:**
 - Uses extension-ci-tools for standardized build process
@@ -227,7 +236,7 @@ ls -la build/release/duckdb
 - Python tests expect specific JSON output format from functions (includes metadata like coordinate_system, epoch)
 - When updating DuckDB version: see `docs/UPDATING.md` for proper procedure
   - Update duckdb submodule to latest tagged release
-  - Update extension-ci-tools to matching branch (e.g., v1.1.0 branch for DuckDB v1.1.0)
+  - Update extension-ci-tools to matching branch (e.g., `v1.4-andium` branch for DuckDB v1.4.x)
   - Update duckdb_version in `.github/workflows/MainDistributionPipeline.yml`
   - Be prepared to handle C++ API changes (DuckDB's internal API is not stable)
 

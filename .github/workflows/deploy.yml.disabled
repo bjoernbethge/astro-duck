@@ -3,13 +3,13 @@ name: Deploy Astro Extension
 on:
   push:
     tags:
-      - 'v*'  # Trigger on version tags like v1.0.0
+      - 'v*'  # Trigger on version tags like v1.1.0
   workflow_dispatch:  # Allow manual triggering
     inputs:
       version:
         description: 'Extension version to deploy'
         required: true
-        default: '1.0.0'
+        default: '1.1.0'
       upload_target:
         description: 'Upload target'
         required: true
@@ -22,7 +22,7 @@ on:
 
 env:
   EXTENSION_NAME: astro
-  DUCKDB_VERSION: v1.3.0
+  DUCKDB_VERSION: v1.4.3
 
 jobs:
   deploy:

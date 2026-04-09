@@ -19,13 +19,13 @@ Main deployment script that handles:
 **Examples:**
 ```bash
 # Deploy to GitHub (default)
-./scripts/astro-extension-upload.sh 1.0.0 v1.2.1 linux_amd64 github
+./scripts/astro-extension-upload.sh 1.1.0 v1.4.3 linux_amd64 github
 
 # Deploy to S3
-./scripts/astro-extension-upload.sh 1.0.0 v1.2.1 linux_amd64 s3
+./scripts/astro-extension-upload.sh 1.1.0 v1.4.3 linux_amd64 s3
 
 # Prepare for Community Extensions
-./scripts/astro-extension-upload.sh 1.0.0 v1.2.1 linux_amd64 community
+./scripts/astro-extension-upload.sh 1.1.0 v1.4.3 linux_amd64 community
 ```
 
 ### `deploy-local.sh`
@@ -39,18 +39,6 @@ Local testing script that:
 ```bash
 ./scripts/deploy-local.sh [version] [duckdb_version] [architecture]
 ```
-
-### `setup-github-repo.sh`
-Repository setup helper that:
-- Initializes Git repository
-- Creates standard files (README, LICENSE, etc.)
-- Provides GitHub setup instructions
-
-### `submit-to-community.sh`
-Community extension submission helper that:
-- Clones DuckDB community-extensions repository
-- Customizes description.yml
-- Prepares Pull Request
 
 ### `extension-upload.sh`
 Original DuckDB extension upload script (reference implementation).
@@ -90,18 +78,16 @@ Original DuckDB extension upload script (reference implementation).
    ./scripts/deploy-local.sh
    ```
 
-2. **Deploy to community**:
+2. **Prepare community extension artifacts**:
    ```bash
-   ./scripts/astro-extension-upload.sh 1.0.0 v1.2.1 linux_amd64 community
+   ./scripts/astro-extension-upload.sh 1.1.0 v1.4.3 linux_amd64 community
    ```
 
-3. **Submit to DuckDB Community Extensions**:
-   ```bash
-   ./scripts/submit-to-community.sh
-   ```
+Note: distribution happens through `duckdb/community-extensions` — users install via
+`INSTALL astro FROM community; LOAD astro;` after the descriptor PR is merged.
 
 ## 📚 Related Documentation
 
 - [Main README](../README.md)
-- [Community Sharing Guide](../COMMUNITY_SHARING_GUIDE.md)
-- [Community Submission Guide](../COMMUNITY_SUBMISSION_GUIDE.md) 
+- [Updating guide](../docs/UPDATING.md)
+- [DuckDB Community Extensions](https://github.com/duckdb/community-extensions)

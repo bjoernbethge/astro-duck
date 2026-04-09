@@ -1,7 +1,7 @@
 # 🌟 DuckDB Astro Extension
 Comprehensive astronomical calculations and coordinate transformations for DuckDB with modern integrations.
 
-[![Build Status](https://github.com/bjoernbethge/astro-duck/workflows/CI/badge.svg)](https://github.com/bjoernbethge/astro-duck/actions)
+[![Build Status](https://github.com/synapticore-io/astro-duck/workflows/CI/badge.svg)](https://github.com/synapticore-io/astro-duck/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![DuckDB](https://img.shields.io/badge/DuckDB-v1.4.3-blue.svg)](https://duckdb.org/)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/synapticore-io/astro-duck)
@@ -21,7 +21,7 @@ SELECT astro_body_star_ms(1.0);
 ```
 
 ### Manual Installation
-1. Download the latest release from [Releases](https://github.com/bjoernbethge/astro-duck/releases)
+1. Download the latest release from [Releases](https://github.com/synapticore-io/astro-duck/releases)
 2. Load in DuckDB:
 ```sql
 LOAD '/path/to/astro.duckdb_extension';
@@ -35,7 +35,7 @@ LOAD '/path/to/astro.duckdb_extension';
 - **🌌 Cosmological Calculations**: Luminosity distance, redshift to age
 - **🔗 Modern Integrations**: Arrow, Spatial, and Catalog compatibility
 
-## 📊 Functions (57 signatures)
+## 📊 Functions (48)
 
 ### Coordinate Transformations
 
@@ -196,7 +196,7 @@ SELECT astro_unit_time_to_s(1.0, 'yr');  -- 3.1557e7
 ### Build Steps
 ```bash
 # Clone repository
-git clone https://github.com/bjoernbethge/astro-duck.git
+git clone https://github.com/synapticore-io/astro-duck.git
 cd astro-duck
 
 # Build extension
@@ -223,7 +223,7 @@ LOAD astro;
 -- Convert catalog coordinates to Cartesian
 SELECT
     name,
-    astro_radec_to_xyz(ra, dec, astro_parallax_to_distance(parallax)) as xyz
+    astro_radec_to_xyz(ra, dec, distance_pc) as xyz
 FROM stars;
 
 -- Query objects within angular distance
@@ -231,11 +231,10 @@ SELECT name, ra, dec
 FROM stars
 WHERE astro_angular_separation(ra, dec, 180.0, 0.0) < 5.0;
 
--- Convert between coordinate systems
+-- Transform positions between reference frames (icrs, galactic, ...)
 SELECT
-    astro_equatorial_to_galactic(ra, dec) as galactic,
-    astro_galactic_to_equatorial(l, b) as equatorial
-FROM coordinates;
+    astro_frame_transform_pos(astro_radec_to_xyz(ra, dec, distance_pc), 'icrs', 'galactic') as galactic_pos
+FROM stars;
 ```
 
 ### Photometry Pipeline
@@ -263,13 +262,11 @@ SELECT astro_extinction_alambda(6563, 1.55, 3.1) as A_Halpha;
 
 ### Cosmological Calculations
 ```sql
--- Calculate universe properties at different redshifts
+-- Calculate cosmological distances at different redshifts (H0 in km/s/Mpc)
 SELECT
     z as redshift,
     astro_luminosity_distance(z, 70.0) as lum_dist_mpc,
-    astro_comoving_distance(z, 70.0) as comoving_mpc,
-    astro_lookback_time(z) as lookback_gyr,
-    astro_redshift_to_age(z) as age_gyr
+    astro_comoving_distance(z, 70.0) as comoving_mpc
 FROM generate_series(0.1, 2.0, 0.1) as t(z);
 ```
 
@@ -294,11 +291,9 @@ WHERE mass_earth < 10;
 
 ## 📚 Documentation
 
-- [Function Reference](docs/functions.md)
-- [Integration Guide](docs/integration.md)
-- [Performance Benchmarks](docs/performance.md)
-- [Examples](examples/)
-- [Deployment Scripts](scripts/README.md)
+- Function reference: see the tables above
+- [Updating guide](docs/UPDATING.md)
+- [Deployment scripts](scripts/README.md)
 
 ## 🤝 Contributing
 
@@ -322,8 +317,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/bjoernbethge/astro-duck/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/bjoernbethge/astro-duck/discussions)
+- **Issues**: [GitHub Issues](https://github.com/synapticore-io/astro-duck/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/synapticore-io/astro-duck/discussions)
 - **DuckDB Discord**: [Join the community](https://discord.duckdb.org)
 
 ---
