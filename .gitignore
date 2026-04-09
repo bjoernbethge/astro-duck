@@ -2,6 +2,9 @@
 build/
 deploy/
 
+# Test artifacts
+duckdb_unittest_tempdir/
+
 # Temporary files
 *.tmp
 *.log

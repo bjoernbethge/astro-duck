@@ -66,11 +66,10 @@ make test_debug    # Run all SQLLogicTests with debug build
 2. **Python tests** (quick validation):
 ```bash
 python test_astro.py    # Comprehensive test suite
-python simple_test.py   # Quick smoke test
 ```
    - Tests require the extension to be built first
-   - Tests use `build/release/duckdb` binary with `-unsigned` flag to load local extension
-   - Tests verify all 8 astronomical functions plus integration features
+   - Tests use `build/release/duckdb` binary to load the local extension
+   - Tests verify all astronomical functions plus integration features
 
 **Test Requirements:**
 - Tests require the extension to be built first
@@ -84,7 +83,6 @@ python simple_test.py   # Quick smoke test
 - `CMakeLists.txt`: Extension-specific CMake configuration
 - `extension_config.cmake`: Defines extension version (v1.0.0), DuckDB version (v1.3.0), and build configuration
 - `test_astro.py`: Comprehensive Python test suite for all functions
-- `simple_test.py`: Quick smoke test
 - `.gitmodules`: Submodule configuration (duckdb, extension-ci-tools)
 - `.gitignore`: Excludes build/, duckdb/, *.duckdb_extension, Python cache
 
@@ -210,7 +208,6 @@ make clean && make release     # Clean rebuild
 make test                      # SQLLogicTests (preferred)
 make test_debug                # SQLLogicTests with debug build
 python test_astro.py          # Python test suite
-python simple_test.py         # Quick smoke test
 
 # Check build output
 ls -la build/release/extension/astro/
