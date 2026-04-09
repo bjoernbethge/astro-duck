@@ -110,7 +110,7 @@ Interstellar dust extinction using the Cardelli, Clayton & Mathis (1989) extinct
 
 ### Celestial Body Models
 
-Returns STRUCT with: `mass_kg`, `radius_m`, `temperature_K`, `luminosity_W`, `density_kg_m3`, `body_type`
+Returns STRUCT with: `mass_kg`, `radius_m`, `luminosity_w`, `temperature_k`, `density_kg_m3`, `body_type`
 
 | Function | Description | Example |
 |----------|-------------|---------|
@@ -153,23 +153,26 @@ Returns STRUCT with: `mass_kg`, `radius_m`, `temperature_K`, `luminosity_W`, `de
 
 #### Coordinate Functions
 
-**`astro_radec_to_xyz(ra, dec, distance)`** returns a STRUCT:
+**`astro_radec_to_xyz(ra, dec, distance)`** returns a STRUCT with the position
+in the ICRS frame. The distance unit is whatever you pass in — wrap it with
+`astro_unit_pc(...)` / `astro_unit_AU(...)` / `astro_unit_ly(...)` if you
+want SI meters.
 ```sql
 SELECT astro_radec_to_xyz(45.0, 30.0, 10.0);
--- {'x': 6.123724356957945, 'y': 6.123724356957946, 'z': 4.999999999999999}
+-- {'x_m': 6.123724..., 'y_m': 6.123724..., 'z_m': 5.0, 'frame': 'icrs'}
 ```
 
 #### Body Models
 
-Each body function returns a STRUCT with physical properties:
+Each body function returns a STRUCT with physical properties in SI units:
 ```sql
 SELECT astro_body_star_ms(1.0);  -- Sun-like star
--- {'mass_kg': 1.989e+30, 'radius_m': 6.957e+08, 'temperature_K': 5778.0,
---  'luminosity_W': 3.828e+26, 'density_kg_m3': 1408.0, 'body_type': 'star_main_sequence'}
+-- {'mass_kg': 1.989e+30, 'radius_m': 6.957e+08, 'luminosity_w': 3.828e+26,
+--  'temperature_k': 5778.0, 'density_kg_m3': 1408.0, 'body_type': 'star_main_sequence'}
 
 SELECT astro_body_black_hole(10.0);  -- 10 solar mass black hole
--- {'mass_kg': 1.989e+31, 'radius_m': 29541.0, 'temperature_K': 0.0,
---  'luminosity_W': 0.0, 'density_kg_m3': 1.83e+18, 'body_type': 'black_hole'}
+-- {'mass_kg': 1.989e+31, 'radius_m': 29541.0, 'luminosity_w': 0.0,
+--  'temperature_k': 0.0, 'density_kg_m3': 1.83e+18, 'body_type': 'black_hole'}
 ```
 
 #### Unit Conversions
@@ -215,6 +218,10 @@ python test_astro.py
 - Memory-efficient batch processing
 
 ## 🔧 Integration Examples
+
+> The snippets below are minimal patterns. For end-to-end recipes against
+> real catalogs (Gaia, NASA Exoplanet Archive, simulation snapshots,
+> dustmaps) see the **[Cookbook](docs/COOKBOOK.md)**.
 
 ### Coordinate Transformations
 ```sql
@@ -291,6 +298,10 @@ WHERE mass_earth < 10;
 
 ## 📚 Documentation
 
+- **[Cookbook](docs/COOKBOOK.md)** — real-world recipes: Gaia cone search,
+  HR diagrams, dust dereddening with CCM89, Hubble diagrams, exoplanet
+  characterization, N-body spatial binning, ICRS↔galactic transforms.
+  Each recipe is self-contained and runs without external data.
 - Function reference: see the tables above
 - [Updating guide](docs/UPDATING.md)
 - [Deployment scripts](scripts/README.md)
