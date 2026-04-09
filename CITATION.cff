@@ -11,6 +11,14 @@ url: "https://github.com/synapticore-io/astro-duck"
 license: MIT
 version: "1.1.1"
 date-released: "2026-04-09"
+doi: "10.5281/zenodo.19482716"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.19482715"
+    description: "Concept DOI - resolves to the latest version"
+  - type: doi
+    value: "10.5281/zenodo.19482716"
+    description: "DOI for version 1.1.1"
 abstract: >-
   astro-duck is a DuckDB extension that brings astronomical
   calculations to SQL: coordinate transforms (RA/Dec to Cartesian,

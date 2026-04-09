@@ -4,6 +4,7 @@ Comprehensive astronomical calculations and coordinate transformations for DuckD
 [![Build Status](https://github.com/synapticore-io/astro-duck/workflows/CI/badge.svg)](https://github.com/synapticore-io/astro-duck/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![DuckDB](https://img.shields.io/badge/DuckDB-v1.4.3-blue.svg)](https://duckdb.org/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19482715.svg)](https://doi.org/10.5281/zenodo.19482715)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/synapticore-io/astro-duck)
 
 ## 🚀 Quick Start
@@ -315,6 +316,34 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 3. Make your changes
 4. Add tests
 5. Submit a pull request
+
+## 📖 How to Cite
+
+If you use astro-duck in research that leads to a publication, please cite
+the software via its Zenodo DOI. The badge above resolves to the latest
+version; for a specific release use the version DOI.
+
+**Concept DOI (always-latest):** [10.5281/zenodo.19482715](https://doi.org/10.5281/zenodo.19482715)
+
+**Latest version DOI (v1.1.1):** [10.5281/zenodo.19482716](https://doi.org/10.5281/zenodo.19482716)
+
+GitHub also reads `CITATION.cff` and shows a "Cite this repository" button
+in the right sidebar with auto-generated BibTeX / APA / RIS / EndNote
+formats.
+
+### BibTeX
+
+```bibtex
+@software{bethge_astro_duck,
+  author       = {Bethge, Björn},
+  title        = {{astro-duck: A DuckDB extension for astronomical calculations}},
+  year         = {2026},
+  version      = {1.1.1},
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.19482715},
+  url          = {https://doi.org/10.5281/zenodo.19482715}
+}
+```
 
 ## 📄 License
 
