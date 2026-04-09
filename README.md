@@ -1,7 +1,4 @@
 # 🌟 DuckDB Astro Extension
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/N4N71WOHZ3)
-
 Comprehensive astronomical calculations and coordinate transformations for DuckDB with modern integrations.
 
 [![Build Status](https://github.com/bjoernbethge/astro-duck/workflows/CI/badge.svg)](https://github.com/bjoernbethge/astro-duck/actions)
