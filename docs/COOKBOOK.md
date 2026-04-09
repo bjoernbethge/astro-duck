@@ -473,6 +473,115 @@ WHERE abs(pos.z_m) < astro_unit_pc(100.0);  -- |z| < 100 pc → galactic disk
 
 ---
 
+## Recipe 8 — What Is Above the Horizon Right Now?
+
+**Goal**: for an observer at a given latitude/longitude and a moment in time,
+turn a catalog of equatorial RA/Dec coordinates into horizontal alt/az
+coordinates and select everything that is currently above the horizon. This
+is the foundation of any observation-planning pipeline.
+
+**Functions**: `astro_jd_from_timestamp`, `astro_lmst`, `astro_altaz_from_radec`,
+optionally `astro_hour_angle`, `astro_gmst`
+
+### Minimal example
+
+```sql
+WITH
+    -- Observer location: Hamburg, Germany
+    observer(lat, lon) AS (VALUES (53.55, 10.00)),
+    -- Compute Local Mean Sidereal Time for "now"
+    obs AS (
+        SELECT
+            (SELECT lat FROM observer) AS lat,
+            astro_lmst(astro_jd_from_timestamp(now()),
+                       (SELECT lon FROM observer)) AS lmst_h
+    ),
+    -- A few well-known bright stars (RA/Dec in degrees, ICRS)
+    stars(name, ra, dec) AS (
+        VALUES
+            ('Polaris',     37.9547,  89.2642),
+            ('Vega',       279.2347,  38.7837),
+            ('Sirius',     101.2875, -16.7161),
+            ('Betelgeuse',  88.7929,   7.4071),
+            ('Antares',    247.3519, -26.4320),
+            ('Arcturus',   213.9153,  19.1825)
+    )
+SELECT
+    name,
+    (astro_altaz_from_radec(ra, dec, (SELECT lmst_h FROM obs),
+                             (SELECT lat  FROM obs))).alt_deg AS alt_deg,
+    (astro_altaz_from_radec(ra, dec, (SELECT lmst_h FROM obs),
+                             (SELECT lat  FROM obs))).az_deg  AS az_deg
+FROM stars
+ORDER BY alt_deg DESC;
+```
+
+Polaris will always sit at altitude ≈ observer latitude (≈ 53.55° in
+Hamburg) regardless of time. Stars below the horizon get negative altitudes
+and would normally be filtered out with `WHERE alt_deg > 0`.
+
+### Reference values for sanity-checking
+
+| Test                                                   | Expected            |
+|--------------------------------------------------------|---------------------|
+| `astro_jd_from_timestamp('1970-01-01 00:00:00')`       | 2440587.5           |
+| `astro_jd_from_timestamp('2000-01-01 12:00:00')`       | 2451545.0           |
+| `astro_gmst(2451545.0)`                                | 18.6974 h           |
+| `astro_lmst(jd, 0)` − `astro_gmst(jd)`                 | 0                   |
+| `astro_lmst(jd, 15)` − `astro_gmst(jd)`                | 1.0 h               |
+| `astro_altaz_from_radec(0, 90, *, 53.55).alt_deg`      | 53.55 (= latitude)  |
+| `astro_altaz_from_radec(0, 0, 0, 45).az_deg`           | 180 (due south)     |
+| `astro_altaz_from_radec(90, 0, 0, 45).az_deg`          | 90 (due east)       |
+
+### Scale-up — bright stars visible from your observatory
+
+Combined with a real catalog (Gaia DR3 bright sample, Hipparcos, Yale BSC):
+
+```sql
+WITH
+    observer(lat, lon) AS (VALUES (53.55, 10.0)),
+    obs AS (
+        SELECT
+            (SELECT lat FROM observer) AS lat,
+            astro_lmst(astro_jd_from_timestamp(now() + INTERVAL 4 HOURS),
+                       (SELECT lon FROM observer)) AS lmst_h
+    )
+SELECT
+    source_id,
+    ra,
+    dec,
+    phot_g_mean_mag,
+    (astro_altaz_from_radec(ra, dec,
+        (SELECT lmst_h FROM obs),
+        (SELECT lat FROM obs))).alt_deg AS alt_deg
+FROM read_parquet('gaia_bright.parquet')
+WHERE phot_g_mean_mag < 6           -- naked-eye limit
+  AND (astro_altaz_from_radec(ra, dec,
+        (SELECT lmst_h FROM obs),
+        (SELECT lat FROM obs))).alt_deg > 30   -- avoid horizon haze
+ORDER BY alt_deg DESC
+LIMIT 50;
+```
+
+The `now() + INTERVAL 4 HOURS` lets you plan ahead — substitute any
+`TIMESTAMP` literal to plan an entire observing run in advance.
+
+### Conventions
+
+- `ra`, `dec`, `lon_deg`, `lat_deg` are in **degrees**
+- `lmst_h` is in **hours** (in the [0, 24) range from `astro_lmst`)
+- Hour angle is in **hours**, signed: negative = east of meridian (rising),
+  zero = on the meridian (transit / culmination), positive = west of
+  meridian (setting)
+- Altitude is in **degrees**, signed: negative = below the horizon
+- Azimuth is measured **from North through East** (0° = N, 90° = E,
+  180° = S, 270° = W)
+- Eastern longitudes are positive (`+10` for Hamburg, `-122` for Berkeley)
+- The sidereal time formula is the Meeus / IAU 1982 expression — accurate
+  to a few seconds for any reasonable input date
+
+---
+
 ## Notes on Units and Frames
 
 - **Distances**: all body / orbit functions expect SI (meters, kg). The

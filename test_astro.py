@@ -210,6 +210,24 @@ def main():
     total_passed += p
     total_failed += f
 
+    # Sidereal Time & Observing
+    p, f = test_group("Sidereal Time & Observing", [
+        ("JD from Unix epoch",          "SELECT astro_jd_from_timestamp(TIMESTAMP '1970-01-01 00:00:00');"),
+        ("JD from J2000.0",             "SELECT astro_jd_from_timestamp(TIMESTAMP '2000-01-01 12:00:00');"),
+        ("GMST at J2000.0",             "SELECT astro_gmst(2451545.0);"),
+        ("GMST one day later",          "SELECT astro_gmst(2451546.0);"),
+        ("LMST at lon=0 (= GMST)",      "SELECT astro_lmst(2451545.0, 0.0);"),
+        ("LMST at lon=+15 deg",         "SELECT astro_lmst(2451545.0, 15.0);"),
+        ("LMST at lon=+180 deg",        "SELECT astro_lmst(2451545.0, 180.0);"),
+        ("Hour angle (ra=15, lmst=10)", "SELECT astro_hour_angle(15.0, 10.0);"),
+        ("Hour angle wrap (ra=345)",    "SELECT astro_hour_angle(345.0, 10.0);"),
+        ("AltAz at celestial pole",     "SELECT astro_altaz_from_radec(0.0, 90.0, 0.0, 53.55);"),
+        ("AltAz on meridian (south)",   "SELECT astro_altaz_from_radec(0.0, 0.0, 0.0, 45.0);"),
+        ("AltAz rising in east",        "SELECT astro_altaz_from_radec(90.0, 0.0, 0.0, 45.0);"),
+    ])
+    total_passed += p
+    total_failed += f
+
     # Summary
     print("\n" + "="*50)
     print(" TEST SUMMARY")

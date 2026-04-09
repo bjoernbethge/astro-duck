@@ -30,13 +30,17 @@ LOAD '/path/to/astro.duckdb_extension';
 
 ## ✨ Features
 
-- **🌐 Coordinate Transformations**: RA/Dec ↔ Cartesian with full metadata
+- **🌐 Coordinate Transformations**: RA/Dec ↔ Cartesian, ICRS ↔ galactic frame
 - **📐 Angular Calculations**: Precise angular separation using Haversine formula
 - **💫 Photometric Functions**: Magnitude/flux conversions with zero-point support
-- **🌌 Cosmological Calculations**: Luminosity distance, redshift to age
-- **🔗 Modern Integrations**: Arrow, Spatial, and Catalog compatibility
+- **🌫️ Dust Extinction**: CCM89 + O'Donnell (1994) with UBVRIJHK bands
+- **🌌 Cosmological Calculations**: Luminosity and comoving distance
+- **🔭 Sidereal Time & Observing**: GMST/LMST, hour angle, equatorial → horizontal (alt/az)
+- **🪐 Celestial Body Models**: Stars, planets, brown dwarfs, black holes, asteroids
+- **🛰️ Orbital Mechanics**: Keplerian orbits, mean motion, position/velocity
+- **🧊 3D Spatial Octree**: Sector-based spatial indexing for N-body data
 
-## 📊 Functions (48)
+## 📊 Functions (53)
 
 ### Coordinate Transformations
 
@@ -149,6 +153,32 @@ Returns STRUCT with: `mass_kg`, `radius_m`, `luminosity_w`, `temperature_k`, `de
 | Function | Description | Example |
 |----------|-------------|---------|
 | `astro_dyn_gravity_accel(m1, pos1, m2, pos2)` | Gravitational acceleration | See examples below |
+
+### Sidereal Time & Observing
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `astro_jd_from_timestamp(ts)` | Julian Date from a TIMESTAMP (UT) | `SELECT astro_jd_from_timestamp(now());` |
+| `astro_gmst(jd)` | Greenwich Mean Sidereal Time in hours [0,24) | `SELECT astro_gmst(2451545.0);` |
+| `astro_lmst(jd, lon_deg)` | Local Mean Sidereal Time in hours [0,24) | `SELECT astro_lmst(2451545.0, 10.0);` |
+| `astro_hour_angle(ra_deg, lmst_h)` | Hour angle in hours, in (-12, 12] | `SELECT astro_hour_angle(180.0, 10.0);` |
+| `astro_altaz_from_radec(ra, dec, lmst_h, lat_deg)` | STRUCT{`alt_deg`, `az_deg`} — equatorial → horizontal | See examples below |
+
+`astro_altaz_from_radec` returns a STRUCT with two fields: `alt_deg` (altitude
+above horizon, [-90, 90]) and `az_deg` (azimuth measured from North through
+East, [0, 360)). Use it together with `astro_lmst` to ask "what is currently
+above the horizon at my observatory":
+
+```sql
+WITH obs AS (
+    SELECT astro_lmst(astro_jd_from_timestamp(now()), 10.0) AS lmst_h  -- lon ~Germany
+)
+SELECT name, ra, dec,
+       (astro_altaz_from_radec(ra, dec, (SELECT lmst_h FROM obs), 53.55)).alt_deg AS alt
+FROM bright_stars
+WHERE (astro_altaz_from_radec(ra, dec, (SELECT lmst_h FROM obs), 53.55)).alt_deg > 30
+ORDER BY alt DESC;
+```
 
 ### Function Details
 
@@ -301,8 +331,9 @@ WHERE mass_earth < 10;
 
 - **[Cookbook](docs/COOKBOOK.md)** — real-world recipes: Gaia cone search,
   HR diagrams, dust dereddening with CCM89, Hubble diagrams, exoplanet
-  characterization, N-body spatial binning, ICRS↔galactic transforms.
-  Each recipe is self-contained and runs without external data.
+  characterization, N-body spatial binning, ICRS↔galactic transforms,
+  observation planning with sidereal time and alt/az. Each recipe is
+  self-contained and runs without external data.
 - Function reference: see the tables above
 - [Updating guide](docs/UPDATING.md)
 - [Deployment scripts](scripts/README.md)

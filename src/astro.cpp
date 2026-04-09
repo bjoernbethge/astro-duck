@@ -123,6 +123,14 @@ static LogicalType GetSectorBoundsType() {
     return type;
 }
 
+static LogicalType GetAstroAltAzType() {
+    static LogicalType type = LogicalType::STRUCT({
+        {"alt_deg", LogicalType::DOUBLE},
+        {"az_deg", LogicalType::DOUBLE}
+    });
+    return type;
+}
+
 // ============================================================================
 // MATH HELPERS
 // ============================================================================
@@ -1238,6 +1246,124 @@ static void AstroComovingDistance(DataChunk &args, ExpressionState &state, Vecto
 }
 
 // ============================================================================
+// SIDEREAL TIME & OBSERVING
+// ============================================================================
+// Greenwich Mean Sidereal Time in hours from a Julian Date (UT1).
+// Reference: Meeus, Astronomical Algorithms, 2nd ed., chapter 12 (eq. 12.4).
+// Accurate to a few seconds for dates within a few centuries of J2000.
+static inline double GmstHoursFromJd(double jd) {
+    double dt = jd - 2451545.0;
+    double T = dt / 36525.0;
+    double gmst_deg = 280.46061837
+                    + 360.98564736629 * dt
+                    + 0.000387933 * T * T
+                    - T * T * T / 38710000.0;
+    gmst_deg = fmod(gmst_deg, 360.0);
+    if (gmst_deg < 0.0) gmst_deg += 360.0;
+    return gmst_deg / 15.0;
+}
+
+// astro_jd_from_timestamp(ts) -> Julian Date (UT)
+// DuckDB TIMESTAMP is microseconds since Unix epoch (1970-01-01 00:00 UTC).
+// Unix epoch corresponds to JD 2440587.5.
+static void AstroJdFromTimestamp(DataChunk &args, ExpressionState &state, Vector &result) {
+    UnaryExecutor::Execute<timestamp_t, double>(args.data[0], result, args.size(),
+        [](timestamp_t ts) {
+            return 2440587.5 + static_cast<double>(ts.value) / 86400000000.0;
+        });
+}
+
+// astro_gmst(jd) -> Greenwich Mean Sidereal Time in hours [0, 24)
+static void AstroGmst(DataChunk &args, ExpressionState &state, Vector &result) {
+    UnaryExecutor::Execute<double, double>(args.data[0], result, args.size(),
+        [](double jd) { return GmstHoursFromJd(jd); });
+}
+
+// astro_lmst(jd, longitude_deg_east) -> Local Mean Sidereal Time in hours [0, 24)
+// Eastern longitudes are positive.
+static void AstroLmst(DataChunk &args, ExpressionState &state, Vector &result) {
+    BinaryExecutor::Execute<double, double, double>(
+        args.data[0], args.data[1], result, args.size(),
+        [](double jd, double lon_deg) {
+            double lmst_h = GmstHoursFromJd(jd) + lon_deg / 15.0;
+            lmst_h = fmod(lmst_h, 24.0);
+            if (lmst_h < 0.0) lmst_h += 24.0;
+            return lmst_h;
+        });
+}
+
+// astro_hour_angle(ra_deg, lmst_hours) -> hour angle in hours, in (-12, 12]
+// Negative = object is east of meridian (rising), positive = west (setting), 0 = transit.
+static void AstroHourAngle(DataChunk &args, ExpressionState &state, Vector &result) {
+    BinaryExecutor::Execute<double, double, double>(
+        args.data[0], args.data[1], result, args.size(),
+        [](double ra_deg, double lmst_h) {
+            double ha_h = lmst_h - ra_deg / 15.0;
+            while (ha_h > 12.0) ha_h -= 24.0;
+            while (ha_h <= -12.0) ha_h += 24.0;
+            return ha_h;
+        });
+}
+
+// astro_altaz_from_radec(ra_deg, dec_deg, lmst_hours, lat_deg)
+//   -> STRUCT{alt_deg, az_deg}
+// Azimuth convention: measured from North through East (0 = N, 90 = E, 180 = S, 270 = W).
+static void AstroAltAzFromRadec(DataChunk &args, ExpressionState &state, Vector &result) {
+    auto &result_children = StructVector::GetEntries(result);
+    auto alt_out = FlatVector::GetData<double>(*result_children[0]);
+    auto az_out = FlatVector::GetData<double>(*result_children[1]);
+
+    UnifiedVectorFormat ra_fmt, dec_fmt, lmst_fmt, lat_fmt;
+    args.data[0].ToUnifiedFormat(args.size(), ra_fmt);
+    args.data[1].ToUnifiedFormat(args.size(), dec_fmt);
+    args.data[2].ToUnifiedFormat(args.size(), lmst_fmt);
+    args.data[3].ToUnifiedFormat(args.size(), lat_fmt);
+
+    auto ra_ptr = UnifiedVectorFormat::GetData<double>(ra_fmt);
+    auto dec_ptr = UnifiedVectorFormat::GetData<double>(dec_fmt);
+    auto lmst_ptr = UnifiedVectorFormat::GetData<double>(lmst_fmt);
+    auto lat_ptr = UnifiedVectorFormat::GetData<double>(lat_fmt);
+
+    for (idx_t i = 0; i < args.size(); i++) {
+        double ra = ra_ptr[ra_fmt.sel->get_index(i)];
+        double dec = dec_ptr[dec_fmt.sel->get_index(i)];
+        double lmst_h = lmst_ptr[lmst_fmt.sel->get_index(i)];
+        double lat = lat_ptr[lat_fmt.sel->get_index(i)];
+
+        // Hour angle in radians: (LMST - RA) converted from hours to radians
+        double H = (lmst_h - ra / 15.0) * 15.0 * DEG_TO_RAD;
+        double dec_rad = dec * DEG_TO_RAD;
+        double lat_rad = lat * DEG_TO_RAD;
+        double sin_lat = sin(lat_rad);
+        double cos_lat = cos(lat_rad);
+        double sin_dec = sin(dec_rad);
+        double cos_dec = cos(dec_rad);
+        double cos_H = cos(H);
+        double sin_H = sin(H);
+
+        double sin_alt = sin_dec * sin_lat + cos_dec * cos_lat * cos_H;
+        if (sin_alt > 1.0) sin_alt = 1.0;
+        if (sin_alt < -1.0) sin_alt = -1.0;
+        double alt_rad = asin(sin_alt);
+        double cos_alt = cos(alt_rad);
+
+        double az_rad;
+        if (cos_alt < 1e-12) {
+            // At zenith / nadir azimuth is mathematically undefined
+            az_rad = 0.0;
+        } else {
+            double sin_az = -sin_H * cos_dec / cos_alt;
+            double cos_az = (sin_dec - sin_alt * sin_lat) / (cos_alt * cos_lat);
+            az_rad = atan2(sin_az, cos_az);
+            if (az_rad < 0.0) az_rad += 2.0 * M_PI;
+        }
+
+        alt_out[i] = alt_rad * RAD_TO_DEG;
+        az_out[i] = az_rad * RAD_TO_DEG;
+    }
+}
+
+// ============================================================================
 // EXTENSION REGISTRATION
 // ============================================================================
 // Note: DuckDB provides radians(), degrees(), pi() - no need to duplicate
@@ -1248,6 +1374,7 @@ static void LoadInternal(ExtensionLoader &loader) {
     auto sector_type = GetAstroSectorIdType();
     auto body_type = GetBodyType();
     auto bounds_type = GetSectorBoundsType();
+    auto altaz_type = GetAstroAltAzType();
 
     // Constants
     loader.RegisterFunction(ScalarFunction("astro_const_c", {}, LogicalType::DOUBLE, AstroConstC));
@@ -1345,6 +1472,15 @@ static void LoadInternal(ExtensionLoader &loader) {
     loader.RegisterFunction(ScalarFunction("astro_mag_deredden", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroMagDeredden));
     loader.RegisterFunction(ScalarFunction("astro_flux_deredden", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroFluxDeredden));
     loader.RegisterFunction(ScalarFunction("astro_color_excess", {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroColorExcess));
+
+    // Sidereal time & observing
+    loader.RegisterFunction(ScalarFunction("astro_jd_from_timestamp", {LogicalType::TIMESTAMP}, LogicalType::DOUBLE, AstroJdFromTimestamp));
+    loader.RegisterFunction(ScalarFunction("astro_gmst", {LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroGmst));
+    loader.RegisterFunction(ScalarFunction("astro_lmst", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroLmst));
+    loader.RegisterFunction(ScalarFunction("astro_hour_angle", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroHourAngle));
+    loader.RegisterFunction(ScalarFunction("astro_altaz_from_radec",
+        {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE},
+        altaz_type, AstroAltAzFromRadec));
 }
 
 void AstroExtension::Load(ExtensionLoader &loader) {

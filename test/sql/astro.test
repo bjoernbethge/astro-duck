@@ -381,3 +381,115 @@ query I
 SELECT astro_extinction_band('B', 2.0) = astro_extinction_band('B', 2.0, 3.1);
 ----
 true
+
+# ============================================
+# Sidereal Time & Observing
+# ============================================
+
+# astro_jd_from_timestamp: Unix epoch must be JD 2440587.5
+query I
+SELECT astro_jd_from_timestamp(TIMESTAMP '1970-01-01 00:00:00') = 2440587.5;
+----
+true
+
+# astro_jd_from_timestamp: J2000.0 epoch (2000-01-01 12:00 UT) is JD 2451545.0
+query I
+SELECT abs(astro_jd_from_timestamp(TIMESTAMP '2000-01-01 12:00:00') - 2451545.0) < 1e-6;
+----
+true
+
+# GMST at J2000.0: should equal the formula constant 280.46061837 / 15 = 18.6974 h
+query I
+SELECT abs(astro_gmst(2451545.0) - 18.69737456) < 0.001;
+----
+true
+
+# GMST is in [0, 24)
+query I
+SELECT astro_gmst(2451545.0) >= 0 AND astro_gmst(2451545.0) < 24;
+----
+true
+
+# GMST advances by ~24h per Earth rotation (~0.99727 sidereal day per solar day)
+# After 1 solar day, GMST advances by ~24.0657 hours mod 24 ≈ 0.0657 h ≈ 3m 56s
+query I
+SELECT abs((astro_gmst(2451546.0) - astro_gmst(2451545.0)) - 0.0657098) < 0.001;
+----
+true
+
+# LMST at longitude 0 must equal GMST
+query I
+SELECT abs(astro_lmst(2451545.0, 0.0) - astro_gmst(2451545.0)) < 1e-9;
+----
+true
+
+# LMST at longitude +15 deg = GMST + 1 hour
+query I
+SELECT abs(astro_lmst(2451545.0, 15.0) - (astro_gmst(2451545.0) + 1.0)) < 1e-9;
+----
+true
+
+# LMST is in [0, 24) for any input
+query I
+SELECT astro_lmst(2451545.0, 180.0) >= 0 AND astro_lmst(2451545.0, 180.0) < 24;
+----
+true
+
+# Hour angle: ra=15 deg = 1h, lmst=10h → HA = 9h
+query I
+SELECT astro_hour_angle(15.0, 10.0) = 9.0;
+----
+true
+
+# Hour angle wraps to (-12, 12]
+query I
+SELECT astro_hour_angle(345.0, 10.0) = 11.0;  -- 10 - 23 = -13 → +24 → 11
+----
+true
+
+query I
+SELECT astro_hour_angle(180.0, 10.0) = -2.0;  -- 10 - 12 = -2
+----
+true
+
+# astro_altaz_from_radec: object at celestial pole (dec=90)
+# alt should equal observer latitude
+query I
+SELECT abs((astro_altaz_from_radec(0.0, 90.0, 0.0, 53.55)).alt_deg - 53.55) < 1e-9;
+----
+true
+
+# Equatorial object on the meridian (ra=lmst, dec=0): alt = 90 - lat, az = 180 (south)
+query I
+SELECT abs((astro_altaz_from_radec(0.0, 0.0, 0.0, 45.0)).alt_deg - 45.0) < 1e-9;
+----
+true
+
+query I
+SELECT abs((astro_altaz_from_radec(0.0, 0.0, 0.0, 45.0)).az_deg - 180.0) < 1e-9;
+----
+true
+
+# Equatorial object rising in the east (HA = -6h): alt = 0, az = 90 (east)
+# RA = 90 deg = 6h, LMST = 0 → HA = 0 - 6 = -6 h
+query I
+SELECT abs((astro_altaz_from_radec(90.0, 0.0, 0.0, 45.0)).alt_deg - 0.0) < 1e-9;
+----
+true
+
+query I
+SELECT abs((astro_altaz_from_radec(90.0, 0.0, 0.0, 45.0)).az_deg - 90.0) < 1e-9;
+----
+true
+
+# Altitude must be in [-90, 90] for any input
+query I
+SELECT (astro_altaz_from_radec(123.45, -67.89, 14.5, -33.9)).alt_deg BETWEEN -90.0 AND 90.0;
+----
+true
+
+# Azimuth must be in [0, 360) for any input
+query I
+SELECT (astro_altaz_from_radec(123.45, -67.89, 14.5, -33.9)).az_deg BETWEEN 0.0 AND 360.0;
+----
+true
