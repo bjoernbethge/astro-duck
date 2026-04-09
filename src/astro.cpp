@@ -369,7 +369,7 @@ static double ComputeDensity(double mass_kg, double radius_m) {
     return mass_kg / volume;
 }
 
-static void AstroBodyMakeStarMs(DataChunk &args, ExpressionState &state, Vector &result) {
+static void AstroBodyMakeStarMainSequence(DataChunk &args, ExpressionState &state, Vector &result) {
     UnifiedVectorFormat input;
     args.data[0].ToUnifiedFormat(args.size(), input);
     auto mass_ptr = UnifiedVectorFormat::GetData<double>(input);
@@ -1400,7 +1400,7 @@ static void LoadInternal(ExtensionLoader &loader) {
     loader.RegisterFunction(ScalarFunction("astro_unit_M_earth", {LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroUnitM_earth));
 
     // Body models - Stars
-    loader.RegisterFunction(ScalarFunction("astro_body_star_ms", {LogicalType::DOUBLE}, body_type, AstroBodyMakeStarMs));
+    loader.RegisterFunction(ScalarFunction("astro_body_star_main_sequence", {LogicalType::DOUBLE}, body_type, AstroBodyMakeStarMainSequence));
     loader.RegisterFunction(ScalarFunction("astro_body_star_white_dwarf", {LogicalType::DOUBLE}, body_type, AstroBodyMakeStarWhiteDwarf));
     loader.RegisterFunction(ScalarFunction("astro_body_star_neutron", {LogicalType::DOUBLE}, body_type, AstroBodyMakeStarNeutron));
     loader.RegisterFunction(ScalarFunction("astro_body_brown_dwarf", {LogicalType::DOUBLE}, body_type, AstroBodyMakeBrownDwarf));

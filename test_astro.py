@@ -161,7 +161,7 @@ def main():
 
     # Body Models
     p, f = test_group("Celestial Body Models", [
-        ("Main sequence star (1 M_sun)", "SELECT astro_body_star_ms(1.0);"),
+        ("Main sequence star (1 M_sun)", "SELECT astro_body_star_main_sequence(1.0);"),
         ("White dwarf (0.6 M_sun)", "SELECT astro_body_star_white_dwarf(0.6);"),
         ("Neutron star (1.4 M_sun)", "SELECT astro_body_star_neutron(1.4);"),
         ("Brown dwarf (50 M_jup)", "SELECT astro_body_brown_dwarf(50.0);"),

@@ -155,17 +155,17 @@ true
 # ============================================
 
 query I
-SELECT (astro_body_star_ms(1.0)).mass_kg > 1.9e30;
+SELECT (astro_body_star_main_sequence(1.0)).mass_kg > 1.9e30;
 ----
 true
 
 query I
-SELECT (astro_body_star_ms(1.0)).radius_m > 6.9e8;
+SELECT (astro_body_star_main_sequence(1.0)).radius_m > 6.9e8;
 ----
 true
 
 query I
-SELECT (astro_body_star_ms(1.0)).body_type = 'star_main_sequence';
+SELECT (astro_body_star_main_sequence(1.0)).body_type = 'star_main_sequence';
 ----
 true
 

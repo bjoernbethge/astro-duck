@@ -33,6 +33,70 @@ LOAD astro;
 
 ---
 
+## Astrophysical Background (Quick Primer)
+
+A few astronomical concepts are assumed in the recipes below. These are
+brief refreshers so you don't have to alt-tab — skip whatever you already
+know.
+
+- **Main sequence** — the phase of a star's life where it fuses hydrogen
+  to helium in its core. About 90% of all stars in the universe are
+  main-sequence at any given moment, including the Sun. Main-sequence
+  stars are almost completely determined by a *single* number, their
+  mass, through the **mass-luminosity relation** ($L \propto M^{3.5}$)
+  and the **mass-radius relation** ($R \propto M^{0.8}$). That is why
+  `astro_body_star_main_sequence(mass_msun)` takes exactly one argument
+  and returns a full physical profile. Not main-sequence: white dwarfs,
+  neutron stars, brown dwarfs, black holes — each has its own function
+  because it follows a different physics.
+
+- **Hertzsprung–Russell diagram** — a scatter plot of stellar luminosity
+  vs. temperature (or, equivalently, absolute magnitude vs. color). The
+  main sequence appears as a well-defined diagonal band running from hot
+  / luminous (upper left) to cool / dim (lower right). Produced in
+  Recipe 2 using `astro_absolute_mag` plus a Gaia color index like
+  `bp_rp`.
+
+- **Parallax → distance** — the apparent shift of a nearby star against
+  distant background objects as Earth orbits the Sun. Distance in
+  parsecs equals `1000 / parallax_mas`. Used in Recipes 2 and 7.
+
+- **Solar mass ($M_\odot$), parsec (pc), light year (ly)** — standard
+  astronomy units. One solar mass = 1.989 × 10³⁰ kg, one parsec ≈ 3.26
+  light years ≈ 3.086 × 10¹⁶ m. Convert between SI and astro units with
+  `astro_unit_pc`, `astro_unit_M_sun`, `astro_unit_AU`, etc.
+
+- **Dust extinction** — interstellar dust grains dim and redden starlight
+  along every line of sight. Quantified per sight line by $E(B-V)$
+  (colour excess) and $A_V$ (extinction in the V band), connected by
+  $R_V = A_V / E(B-V) \approx 3.1$ for the diffuse Milky Way interstellar
+  medium. The **CCM89** law (Cardelli, Clayton & Mathis 1989) with
+  **O'Donnell 1994** optical coefficients gives $A(\lambda)/A_V$ at any
+  wavelength. Used in Recipe 3.
+
+- **Redshift → cosmological distance** — due to the expansion of the
+  universe, light from distant galaxies is shifted to longer wavelengths.
+  At low $z$, distance ≈ $cz / H_0$; at higher $z$ the $(1+z)^2$ factor
+  between luminosity and comoving distance becomes important. Used in
+  Recipe 4.
+
+- **ICRS vs. galactic frame** — ICRS (International Celestial Reference
+  System) is aligned close to Earth's equator and independent of Earth's
+  rotation. The galactic frame is centred on the Milky Way's centre with
+  the galactic disk as its reference plane. `astro_frame_transform_pos`
+  rotates position vectors between them. Used in Recipe 7.
+
+- **Sidereal time** — timekeeping by the rotation of Earth relative to
+  the fixed stars, not the Sun. One sidereal day is ~23 h 56 m 04 s,
+  about 4 minutes shorter than a solar day. At a given Local Mean
+  Sidereal Time (LMST), any object whose right ascension equals the LMST
+  is on the meridian (due south in the northern hemisphere), and
+  everything else is east or west of it. This is what lets you convert
+  a catalog of RA/Dec coordinates into "what is above the horizon right
+  now" in Recipe 8.
+
+---
+
 ## Data Sources
 
 Good public catalogs to point DuckDB at:
@@ -294,7 +358,7 @@ that goes on the y-axis of a Hubble diagram.
 model of both the host star and the planet, plus the orbital period you
 would predict from Kepler's 3rd law.
 
-**Functions**: `astro_body_star_ms`, `astro_body_planet_rocky`,
+**Functions**: `astro_body_star_main_sequence`, `astro_body_planet_rocky`,
 `astro_body_planet_gas_giant`, `astro_orbit_period`, `astro_unit_AU`,
 `astro_unit_M_sun`
 
@@ -312,8 +376,8 @@ SELECT
     pl_name,
 
     -- Host star model (main sequence)
-    (astro_body_star_ms(st_mass_msun)).luminosity_w AS host_luminosity_w,
-    (astro_body_star_ms(st_mass_msun)).temperature_k AS host_temp_k,
+    (astro_body_star_main_sequence(st_mass_msun)).luminosity_w AS host_luminosity_w,
+    (astro_body_star_main_sequence(st_mass_msun)).temperature_k AS host_temp_k,
 
     -- Planet model: rocky for < 10 Earth masses, else gas giant scaled to Jupiter
     CASE

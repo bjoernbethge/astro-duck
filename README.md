@@ -1,7 +1,7 @@
 # 🌟 DuckDB Astro Extension
 Comprehensive astronomical calculations and coordinate transformations for DuckDB with modern integrations.
 
-[![Build Status](https://github.com/synapticore-io/astro-duck/workflows/CI/badge.svg)](https://github.com/synapticore-io/astro-duck/actions)
+[![Build Status](https://github.com/synapticore-io/astro-duck/actions/workflows/MainDistributionPipeline.yml/badge.svg?branch=main)](https://github.com/synapticore-io/astro-duck/actions/workflows/MainDistributionPipeline.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![DuckDB](https://img.shields.io/badge/DuckDB-v1.4.3-blue.svg)](https://duckdb.org/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19482715.svg)](https://doi.org/10.5281/zenodo.19482715)
@@ -18,7 +18,7 @@ LOAD astro;
 SELECT astro_angular_separation(45.0, 30.0, 46.0, 31.0) as separation_degrees;
 
 -- Get physical properties of a Sun-like star
-SELECT astro_body_star_ms(1.0);
+SELECT astro_body_star_main_sequence(1.0);
 ```
 
 ### Manual Installation
@@ -119,7 +119,7 @@ Returns STRUCT with: `mass_kg`, `radius_m`, `luminosity_w`, `temperature_k`, `de
 
 | Function | Description | Example |
 |----------|-------------|---------|
-| `astro_body_star_ms(mass_M_sun)` | Main sequence star | `SELECT astro_body_star_ms(1.0);` |
+| `astro_body_star_main_sequence(mass_M_sun)` | Main sequence star | `SELECT astro_body_star_main_sequence(1.0);` |
 | `astro_body_star_white_dwarf(mass_M_sun)` | White dwarf (Chandrasekhar) | `SELECT astro_body_star_white_dwarf(0.6);` |
 | `astro_body_star_neutron(mass_M_sun)` | Neutron star (~11km radius) | `SELECT astro_body_star_neutron(1.4);` |
 | `astro_body_brown_dwarf(mass_M_jup)` | Brown dwarf (13-80 M_jup) | `SELECT astro_body_brown_dwarf(50.0);` |
@@ -197,7 +197,7 @@ SELECT astro_radec_to_xyz(45.0, 30.0, 10.0);
 
 Each body function returns a STRUCT with physical properties in SI units:
 ```sql
-SELECT astro_body_star_ms(1.0);  -- Sun-like star
+SELECT astro_body_star_main_sequence(1.0);  -- Sun-like star
 -- {'mass_kg': 1.989e+30, 'radius_m': 6.957e+08, 'luminosity_w': 3.828e+26,
 --  'temperature_k': 5778.0, 'density_kg_m3': 1408.0, 'body_type': 'star_main_sequence'}
 
