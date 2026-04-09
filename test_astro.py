@@ -191,6 +191,25 @@ def main():
     total_passed += p
     total_failed += f
 
+    # Dust Extinction (CCM89)
+    p, f = test_group("Dust Extinction (CCM89)", [
+        ("A_V from E(B-V)", "SELECT astro_extinction_av(1.0, 3.1);"),
+        ("A_V default R_V", "SELECT astro_extinction_av(1.0);"),
+        ("A(λ) at V-band (5494.5 Å)", "SELECT astro_extinction_alambda(5494.5, 1.0, 3.1);"),
+        ("A(λ) default R_V", "SELECT astro_extinction_alambda(5494.5, 1.0);"),
+        ("A(λ) at B-band (4400 Å)", "SELECT astro_extinction_alambda(4400.0, 1.0, 3.1);"),
+        ("A(λ) at J-band (12350 Å)", "SELECT astro_extinction_alambda(12350.0, 1.0, 3.1);"),
+        ("Extinction in V band", "SELECT astro_extinction_band('V', 1.0, 3.1);"),
+        ("Extinction in V band default", "SELECT astro_extinction_band('V', 1.0);"),
+        ("Extinction in B band", "SELECT astro_extinction_band('B', 1.0, 3.1);"),
+        ("Extinction in K band", "SELECT astro_extinction_band('K', 1.0, 3.1);"),
+        ("Deredden magnitude", "SELECT astro_mag_deredden(15.5, 1.25);"),
+        ("Deredden flux", "SELECT astro_flux_deredden(1000.0, 1.0);"),
+        ("Color excess", "SELECT astro_color_excess(12.5, 11.8, 0.3);"),
+    ])
+    total_passed += p
+    total_failed += f
+
     # Summary
     print("\n" + "="*50)
     print(" TEST SUMMARY")

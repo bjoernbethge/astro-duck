@@ -277,3 +277,107 @@ SELECT COUNT(*) FROM (
 ) WHERE sep >= 0 AND flux > 0 AND dm > 0;
 ----
 3
+
+# ============================================
+# Dust Extinction (CCM89)
+# ============================================
+
+# A_V = R_V * E(B-V)
+query I
+SELECT astro_extinction_av(1.0, 3.1) = 3.1;
+----
+true
+
+# A_V = 0 when E(B-V) = 0
+query I
+SELECT astro_extinction_av(0.0, 3.1) = 0.0;
+----
+true
+
+# V-band normalization: A(λ)/A_V should be ~1.0 at 5494.5 Å
+query I
+SELECT abs(astro_extinction_alambda(5494.5, 1.0, 3.1) - 1.0) < 0.001;
+----
+true
+
+# Extinction in V-band should match alambda at V wavelength
+query I
+SELECT abs(astro_extinction_band('V', 1.0, 3.1) - astro_extinction_alambda(5494.5, 1.0, 3.1)) < 0.001;
+----
+true
+
+# B-band extinction should be higher than V-band (shorter wavelength)
+query I
+SELECT astro_extinction_band('B', 1.0, 3.1) > astro_extinction_band('V', 1.0, 3.1);
+----
+true
+
+# K-band extinction should be lower than V-band (longer wavelength, infrared)
+query I
+SELECT astro_extinction_band('K', 1.0, 3.1) < astro_extinction_band('V', 1.0, 3.1);
+----
+true
+
+# J-band should have lower extinction than B-band
+query I
+SELECT astro_extinction_band('J', 1.0, 3.1) < astro_extinction_band('B', 1.0, 3.1);
+----
+true
+
+# Dereddening magnitude subtracts extinction
+query I
+SELECT astro_mag_deredden(15.5, 1.25) = 14.25;
+----
+true
+
+# Dereddening flux increases the flux
+query I
+SELECT astro_flux_deredden(1000.0, 1.0) > 1000.0;
+----
+true
+
+# Flux correction factor for 1 mag extinction should be ~2.512
+query I
+SELECT abs(astro_flux_deredden(1.0, 1.0) - 2.51188643150958) < 0.0001;
+----
+true
+
+# Color excess calculation: E = (m1 - m2) - intrinsic
+query I
+SELECT abs(astro_color_excess(12.5, 11.8, 0.3) - 0.4) < 0.0001;
+----
+true
+
+# Zero color excess when observed equals intrinsic
+query I
+SELECT astro_color_excess(12.5, 12.0, 0.5) = 0.0;
+----
+true
+
+# Case-insensitive band names
+query I
+SELECT astro_extinction_band('v', 1.0, 3.1) = astro_extinction_band('V', 1.0, 3.1);
+----
+true
+
+# R_V affects the extinction ratio
+query I
+SELECT astro_extinction_alambda(4400.0, 1.0, 5.0) != astro_extinction_alambda(4400.0, 1.0, 3.1);
+----
+true
+
+# Default R_V=3.1 overloads
+query I
+SELECT astro_extinction_av(1.0) = astro_extinction_av(1.0, 3.1);
+----
+true
+
+query I
+SELECT astro_extinction_alambda(5000.0, 1.5) = astro_extinction_alambda(5000.0, 1.5, 3.1);
+----
+true
+
+query I
+SELECT astro_extinction_band('B', 2.0) = astro_extinction_band('B', 2.0, 3.1);
+----
+true

@@ -1016,6 +1016,208 @@ static void AstroAbsoluteMag(DataChunk &args, ExpressionState &state, Vector &re
 }
 
 // ============================================================================
+// DUST EXTINCTION FUNCTIONS (CCM89 + O'Donnell 1994)
+// ============================================================================
+
+// CCM89 band effective wavelengths in Angstroms
+static double BandToWavelength(const string &band) {
+    string b = StringUtil::Lower(band);
+    if (b == "u") return 3650.0;
+    if (b == "b") return 4400.0;
+    if (b == "v") return 5494.5;
+    if (b == "r") return 6580.0;
+    if (b == "i") return 8060.0;
+    if (b == "j") return 12350.0;
+    if (b == "h") return 16620.0;
+    if (b == "k" || b == "ks") return 21590.0;
+    throw InvalidInputException("Unknown photometric band: '%s'. Valid: U, B, V, R, I, J, H, K", band.c_str());
+}
+
+// CCM89 extinction law with O'Donnell 1994 optical coefficients
+// Returns A(λ)/A_V for given wavelength in Angstroms and R_V
+static double CCM89ExtinctionRatio(double wavelength_angstrom, double rv) {
+    // Convert to inverse microns: x = 10000 / λ(Å)
+    double x = 10000.0 / wavelength_angstrom;
+    double a, b;
+
+    if (x < 0.3) {
+        // Far infrared - extrapolate
+        a = 0.574 * pow(x, 1.61);
+        b = -0.527 * pow(x, 1.61);
+    } else if (x < 1.1) {
+        // Infrared (0.3 < x < 1.1 μm⁻¹)
+        a = 0.574 * pow(x, 1.61);
+        b = -0.527 * pow(x, 1.61);
+    } else if (x < 3.3) {
+        // Optical/NIR (1.1 ≤ x < 3.3 μm⁻¹)
+        // O'Donnell 1994 updated coefficients
+        double y = x - 1.82;
+        double y2 = y * y;
+        double y3 = y2 * y;
+        double y4 = y3 * y;
+        double y5 = y4 * y;
+        double y6 = y5 * y;
+        double y7 = y6 * y;
+        double y8 = y7 * y;
+
+        a = 1.0 + 0.104 * y - 0.609 * y2 + 0.701 * y3 + 1.137 * y4
+            - 1.718 * y5 - 0.827 * y6 + 1.647 * y7 - 0.505 * y8;
+        b = 1.952 * y + 2.908 * y2 - 3.989 * y3 - 7.985 * y4
+            + 11.102 * y5 + 5.491 * y6 - 10.805 * y7 + 3.347 * y8;
+    } else if (x < 8.0) {
+        // UV (3.3 ≤ x < 8.0 μm⁻¹)
+        double Fa = 0.0, Fb = 0.0;
+        if (x >= 5.9) {
+            double x59 = x - 5.9;
+            double x59_2 = x59 * x59;
+            double x59_3 = x59_2 * x59;
+            Fa = -0.04473 * x59_2 - 0.009779 * x59_3;
+            Fb = 0.2130 * x59_2 + 0.1207 * x59_3;
+        }
+        double x_467 = x - 4.67;
+        double x_462 = x - 4.62;
+        a = 1.752 - 0.316 * x - 0.104 / (x_467 * x_467 + 0.341) + Fa;
+        b = -3.090 + 1.825 * x + 1.206 / (x_462 * x_462 + 0.263) + Fb;
+    } else {
+        // Far UV (x >= 8.0 μm⁻¹) - extrapolate
+        double x8 = x - 8.0;
+        double x8_2 = x8 * x8;
+        double x8_3 = x8_2 * x8;
+        a = -1.073 - 0.628 * x8 + 0.137 * x8_2 - 0.070 * x8_3;
+        b = 13.670 + 4.257 * x8 - 0.420 * x8_2 + 0.374 * x8_3;
+    }
+
+    return a + b / rv;
+}
+
+// Default R_V for Milky Way diffuse ISM
+constexpr double DEFAULT_RV = 3.1;
+
+// astro_extinction_av(ebv, rv=3.1) -> A_V
+static void AstroExtinctionAv(DataChunk &args, ExpressionState &state, Vector &result) {
+    BinaryExecutor::Execute<double, double, double>(
+        args.data[0], args.data[1], result, args.size(),
+        [](double ebv, double rv) {
+            return rv * ebv;
+        });
+}
+
+// Overload with default R_V
+static void AstroExtinctionAvDefault(DataChunk &args, ExpressionState &state, Vector &result) {
+    UnaryExecutor::Execute<double, double>(args.data[0], result, args.size(),
+        [](double ebv) { return DEFAULT_RV * ebv; });
+}
+
+// astro_extinction_alambda(wavelength_angstrom, av, rv=3.1) -> A(λ)
+static void AstroExtinctionAlambda(DataChunk &args, ExpressionState &state, Vector &result) {
+    UnifiedVectorFormat wl_fmt, av_fmt, rv_fmt;
+    args.data[0].ToUnifiedFormat(args.size(), wl_fmt);
+    args.data[1].ToUnifiedFormat(args.size(), av_fmt);
+    args.data[2].ToUnifiedFormat(args.size(), rv_fmt);
+
+    auto wl_ptr = UnifiedVectorFormat::GetData<double>(wl_fmt);
+    auto av_ptr = UnifiedVectorFormat::GetData<double>(av_fmt);
+    auto rv_ptr = UnifiedVectorFormat::GetData<double>(rv_fmt);
+    auto out = FlatVector::GetData<double>(result);
+
+    for (idx_t i = 0; i < args.size(); i++) {
+        double wavelength = wl_ptr[wl_fmt.sel->get_index(i)];
+        double av = av_ptr[av_fmt.sel->get_index(i)];
+        double rv = rv_ptr[rv_fmt.sel->get_index(i)];
+
+        if (wavelength <= 0) {
+            out[i] = std::numeric_limits<double>::quiet_NaN();
+        } else {
+            out[i] = CCM89ExtinctionRatio(wavelength, rv) * av;
+        }
+    }
+}
+
+// Overload with default R_V
+static void AstroExtinctionAlambdaDefault(DataChunk &args, ExpressionState &state, Vector &result) {
+    BinaryExecutor::Execute<double, double, double>(
+        args.data[0], args.data[1], result, args.size(),
+        [](double wavelength, double av) {
+            if (wavelength <= 0) return std::numeric_limits<double>::quiet_NaN();
+            return CCM89ExtinctionRatio(wavelength, DEFAULT_RV) * av;
+        });
+}
+
+// astro_extinction_band(band, av, rv=3.1) -> A_band
+static void AstroExtinctionBand(DataChunk &args, ExpressionState &state, Vector &result) {
+    UnifiedVectorFormat band_fmt, av_fmt, rv_fmt;
+    args.data[0].ToUnifiedFormat(args.size(), band_fmt);
+    args.data[1].ToUnifiedFormat(args.size(), av_fmt);
+    args.data[2].ToUnifiedFormat(args.size(), rv_fmt);
+
+    auto band_ptr = UnifiedVectorFormat::GetData<string_t>(band_fmt);
+    auto av_ptr = UnifiedVectorFormat::GetData<double>(av_fmt);
+    auto rv_ptr = UnifiedVectorFormat::GetData<double>(rv_fmt);
+    auto out = FlatVector::GetData<double>(result);
+
+    for (idx_t i = 0; i < args.size(); i++) {
+        string band = band_ptr[band_fmt.sel->get_index(i)].GetString();
+        double av = av_ptr[av_fmt.sel->get_index(i)];
+        double rv = rv_ptr[rv_fmt.sel->get_index(i)];
+
+        double wavelength = BandToWavelength(band);
+        out[i] = CCM89ExtinctionRatio(wavelength, rv) * av;
+    }
+}
+
+// Overload with default R_V
+static void AstroExtinctionBandDefault(DataChunk &args, ExpressionState &state, Vector &result) {
+    BinaryExecutor::Execute<string_t, double, double>(
+        args.data[0], args.data[1], result, args.size(),
+        [](string_t band_str, double av) {
+            string band = band_str.GetString();
+            double wavelength = BandToWavelength(band);
+            return CCM89ExtinctionRatio(wavelength, DEFAULT_RV) * av;
+        });
+}
+
+// astro_mag_deredden(mag, extinction) -> corrected_mag
+static void AstroMagDeredden(DataChunk &args, ExpressionState &state, Vector &result) {
+    BinaryExecutor::Execute<double, double, double>(
+        args.data[0], args.data[1], result, args.size(),
+        [](double mag, double extinction) {
+            return mag - extinction;
+        });
+}
+
+// astro_flux_deredden(flux, extinction) -> corrected_flux
+static void AstroFluxDeredden(DataChunk &args, ExpressionState &state, Vector &result) {
+    BinaryExecutor::Execute<double, double, double>(
+        args.data[0], args.data[1], result, args.size(),
+        [](double flux, double extinction) {
+            // A = -2.5 * log10(F_obs / F_true) => F_true = F_obs * 10^(A/2.5)
+            return flux * pow(10.0, extinction / 2.5);
+        });
+}
+
+// astro_color_excess(mag1, mag2, intrinsic_color) -> E(B-V)
+static void AstroColorExcess(DataChunk &args, ExpressionState &state, Vector &result) {
+    UnifiedVectorFormat m1_fmt, m2_fmt, c0_fmt;
+    args.data[0].ToUnifiedFormat(args.size(), m1_fmt);
+    args.data[1].ToUnifiedFormat(args.size(), m2_fmt);
+    args.data[2].ToUnifiedFormat(args.size(), c0_fmt);
+
+    auto m1_ptr = UnifiedVectorFormat::GetData<double>(m1_fmt);
+    auto m2_ptr = UnifiedVectorFormat::GetData<double>(m2_fmt);
+    auto c0_ptr = UnifiedVectorFormat::GetData<double>(c0_fmt);
+    auto out = FlatVector::GetData<double>(result);
+
+    for (idx_t i = 0; i < args.size(); i++) {
+        double mag1 = m1_ptr[m1_fmt.sel->get_index(i)];
+        double mag2 = m2_ptr[m2_fmt.sel->get_index(i)];
+        double intrinsic = c0_ptr[c0_fmt.sel->get_index(i)];
+
+        // E(mag1 - mag2) = (mag1 - mag2)_observed - (mag1 - mag2)_intrinsic
+        out[i] = (mag1 - mag2) - intrinsic;
+    }
+}
+
+// ============================================================================
 // COSMOLOGY FUNCTIONS
 // ============================================================================
 static void AstroLuminosityDistance(DataChunk &args, ExpressionState &state, Vector &result) {
@@ -1120,6 +1322,29 @@ static void LoadInternal(ExtensionLoader &loader) {
     // Cosmology
     loader.RegisterFunction(ScalarFunction("astro_luminosity_distance", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroLuminosityDistance));
     loader.RegisterFunction(ScalarFunction("astro_comoving_distance", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroComovingDistance));
+
+    // Dust extinction (CCM89 + O'Donnell 1994)
+    // astro_extinction_av: with overload for default R_V=3.1
+    ScalarFunctionSet extinction_av("astro_extinction_av");
+    extinction_av.AddFunction(ScalarFunction({LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroExtinctionAvDefault));
+    extinction_av.AddFunction(ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroExtinctionAv));
+    loader.RegisterFunction(extinction_av);
+
+    // astro_extinction_alambda: with overload for default R_V=3.1
+    ScalarFunctionSet extinction_alambda("astro_extinction_alambda");
+    extinction_alambda.AddFunction(ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroExtinctionAlambdaDefault));
+    extinction_alambda.AddFunction(ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroExtinctionAlambda));
+    loader.RegisterFunction(extinction_alambda);
+
+    // astro_extinction_band: with overload for default R_V=3.1
+    ScalarFunctionSet extinction_band("astro_extinction_band");
+    extinction_band.AddFunction(ScalarFunction({LogicalType::VARCHAR, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroExtinctionBandDefault));
+    extinction_band.AddFunction(ScalarFunction({LogicalType::VARCHAR, LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroExtinctionBand));
+    loader.RegisterFunction(extinction_band);
+
+    loader.RegisterFunction(ScalarFunction("astro_mag_deredden", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroMagDeredden));
+    loader.RegisterFunction(ScalarFunction("astro_flux_deredden", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroFluxDeredden));
+    loader.RegisterFunction(ScalarFunction("astro_color_excess", {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroColorExcess));
 }
 
 void AstroExtension::Load(ExtensionLoader &loader) {
