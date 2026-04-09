@@ -1,5 +1,5 @@
 # This file is included by DuckDB's build system. It specifies which extension to load
-set(EXTENSION_VERSION "v1.1.0")
+set(EXTENSION_VERSION "v1.1.1")
 set(DUCKDB_VERSION "v1.4.3")
 set(GIT_COMMIT_HASH "v1.4.3")
 # Astro Extension - Astronomical calculations and coordinate transformations
