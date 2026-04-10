@@ -3,7 +3,7 @@ Comprehensive astronomical calculations and coordinate transformations for DuckD
 
 [![Build Status](https://github.com/synapticore-io/astro-duck/actions/workflows/MainDistributionPipeline.yml/badge.svg?branch=main)](https://github.com/synapticore-io/astro-duck/actions/workflows/MainDistributionPipeline.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![DuckDB](https://img.shields.io/badge/DuckDB-v1.4.3-blue.svg)](https://duckdb.org/)
+[![DuckDB](https://img.shields.io/badge/DuckDB-v1.5.1-blue.svg)](https://duckdb.org/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19482715.svg)](https://doi.org/10.5281/zenodo.19482715)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/synapticore-io/astro-duck)
 
@@ -158,7 +158,7 @@ Returns STRUCT with: `mass_kg`, `radius_m`, `luminosity_w`, `temperature_k`, `de
 
 | Function | Description | Example |
 |----------|-------------|---------|
-| `astro_jd_from_timestamp(ts)` | Julian Date from a TIMESTAMP (UT) | `SELECT astro_jd_from_timestamp(now());` |
+| `astro_jd_from_timestamp(ts)` | Julian Date from TIMESTAMP or TIMESTAMPTZ | `SELECT astro_jd_from_timestamp(now());` |
 | `astro_gmst(jd)` | Greenwich Mean Sidereal Time in hours [0,24) | `SELECT astro_gmst(2451545.0);` |
 | `astro_lmst(jd, lon_deg)` | Local Mean Sidereal Time in hours [0,24) | `SELECT astro_lmst(2451545.0, 10.0);` |
 | `astro_hour_angle(ra_deg, lmst_h)` | Hour angle in hours, in (-12, 12] | `SELECT astro_hour_angle(180.0, 10.0);` |

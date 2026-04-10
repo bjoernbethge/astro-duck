@@ -1474,7 +1474,10 @@ static void LoadInternal(ExtensionLoader &loader) {
     loader.RegisterFunction(ScalarFunction("astro_color_excess", {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroColorExcess));
 
     // Sidereal time & observing
-    loader.RegisterFunction(ScalarFunction("astro_jd_from_timestamp", {LogicalType::TIMESTAMP}, LogicalType::DOUBLE, AstroJdFromTimestamp));
+    ScalarFunctionSet jd_set("astro_jd_from_timestamp");
+    jd_set.AddFunction(ScalarFunction({LogicalType::TIMESTAMP}, LogicalType::DOUBLE, AstroJdFromTimestamp));
+    jd_set.AddFunction(ScalarFunction({LogicalType::TIMESTAMP_TZ}, LogicalType::DOUBLE, AstroJdFromTimestamp));
+    loader.RegisterFunction(jd_set);
     loader.RegisterFunction(ScalarFunction("astro_gmst", {LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroGmst));
     loader.RegisterFunction(ScalarFunction("astro_lmst", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroLmst));
     loader.RegisterFunction(ScalarFunction("astro_hour_angle", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroHourAngle));

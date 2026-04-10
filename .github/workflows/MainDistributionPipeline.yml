@@ -30,7 +30,7 @@ jobs:
     name: Build extension binaries
     uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@main
     with:
-      duckdb_version: v1.4-andium
-      ci_tools_version: main
+      duckdb_version: v1.5-variegata
+      ci_tools_version: v1.5.1
       extension_name: astro
       exclude_archs: ${{ github.event_name == 'pull_request' && 'linux_arm64;osx_amd64;osx_arm64;windows_amd64;wasm_mvp' || '' }}

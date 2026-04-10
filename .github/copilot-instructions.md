@@ -8,7 +8,7 @@
 - Language: C++ (C++17 required)
 - Project Type: DuckDB Extension
 - Size: Small (~10 source files + submodules)
-- Target Runtime: DuckDB v1.4.3 (configurable via extension_config.cmake)
+- Target Runtime: DuckDB v1.5.1 (configurable via extension_config.cmake)
 - Frameworks: CMake build system, DuckDB extension API
 
 ## Critical Build Requirements
@@ -81,7 +81,7 @@ python test_astro.py    # Comprehensive test suite
 ### Root Directory Files
 - `Makefile`: Main build orchestrator (includes extension-ci-tools makefiles)
 - `CMakeLists.txt`: Extension-specific CMake configuration
-- `extension_config.cmake`: Defines extension version (v1.1.0), DuckDB version (v1.4.3), and build configuration
+- `extension_config.cmake`: Defines extension version (v1.3.0), DuckDB version (v1.5.1), and build configuration
 - `test_astro.py`: Comprehensive Python test suite for all functions
 - `.gitmodules`: Submodule configuration (duckdb, extension-ci-tools)
 - `.gitignore`: Excludes build/, duckdb/, *.duckdb_extension, Python cache
@@ -126,7 +126,7 @@ See the function tables in `README.md` for the full reference.
 
 ### CI/CD Workflows (`.github/workflows/`)
 - `MainDistributionPipeline.yml`: Main CI using duckdb/extension-ci-tools (builds for all platforms)
-  - Builds against DuckDB stable (currently v1.4.3, matching `extension_config.cmake`).
+  - Builds against DuckDB stable (currently v1.5.1, matching `extension_config.cmake`).
 - `ExtensionTemplate.yml`: Template testing workflow (can be ignored for astro extension)
 - `deploy.yml.disabled`: Multi-platform deployment workflow (currently disabled — distribution goes through `duckdb/community-extensions`)
 
@@ -236,7 +236,7 @@ ls -la build/release/duckdb
 - Python tests expect specific JSON output format from functions (includes metadata like coordinate_system, epoch)
 - When updating DuckDB version: see `docs/UPDATING.md` for proper procedure
   - Update duckdb submodule to latest tagged release
-  - Update extension-ci-tools to matching branch (e.g., `v1.4-andium` branch for DuckDB v1.4.x)
+  - Update extension-ci-tools to matching branch (e.g., `v1.5-variegata` branch for DuckDB v1.5.x)
   - Update duckdb_version in `.github/workflows/MainDistributionPipeline.yml`
   - Be prepared to handle C++ API changes (DuckDB's internal API is not stable)
 

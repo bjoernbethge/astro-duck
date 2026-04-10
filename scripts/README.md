@@ -19,13 +19,13 @@ Main deployment script that handles:
 **Examples:**
 ```bash
 # Deploy to GitHub (default)
-./scripts/astro-extension-upload.sh 1.1.0 v1.4.3 linux_amd64 github
+./scripts/astro-extension-upload.sh 1.1.0 v1.5.1 linux_amd64 github
 
 # Deploy to S3
-./scripts/astro-extension-upload.sh 1.1.0 v1.4.3 linux_amd64 s3
+./scripts/astro-extension-upload.sh 1.1.0 v1.5.1 linux_amd64 s3
 
 # Prepare for Community Extensions
-./scripts/astro-extension-upload.sh 1.1.0 v1.4.3 linux_amd64 community
+./scripts/astro-extension-upload.sh 1.1.0 v1.5.1 linux_amd64 community
 ```
 
 ### `deploy-local.sh`
@@ -80,7 +80,7 @@ Original DuckDB extension upload script (reference implementation).
 
 2. **Prepare community extension artifacts**:
    ```bash
-   ./scripts/astro-extension-upload.sh 1.1.0 v1.4.3 linux_amd64 community
+   ./scripts/astro-extension-upload.sh 1.1.0 v1.5.1 linux_amd64 community
    ```
 
 Note: distribution happens through `duckdb/community-extensions` — users install via

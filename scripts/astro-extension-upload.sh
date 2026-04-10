@@ -13,7 +13,7 @@ set -e
 
 EXTENSION_NAME="astro"
 EXTENSION_VERSION=${1:-"1.1.0"}
-DUCKDB_VERSION=${2:-"v1.4.3"}
+DUCKDB_VERSION=${2:-"v1.5.1"}
 ARCHITECTURE=${3:-"linux_amd64"}
 UPLOAD_TARGET=${4:-"github"}
 

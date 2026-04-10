@@ -22,7 +22,7 @@ on:
 
 env:
   EXTENSION_NAME: astro
-  DUCKDB_VERSION: v1.4.3
+  DUCKDB_VERSION: v1.5.1
 
 jobs:
   deploy:

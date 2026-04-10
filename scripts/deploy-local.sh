@@ -9,7 +9,7 @@ echo "🧪 Testing Astro Extension Deployment Locally"
 
 # Default values
 EXTENSION_VERSION=${1:-"1.1.0"}
-DUCKDB_VERSION=${2:-"v1.4.3"}
+DUCKDB_VERSION=${2:-"v1.5.1"}
 ARCHITECTURE=${3:-"linux_amd64"}
 
 echo "   Extension Version: $EXTENSION_VERSION"
