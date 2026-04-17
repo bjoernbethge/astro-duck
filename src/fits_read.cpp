@@ -165,6 +165,16 @@ static void FitsHeaderFunction(ClientContext &, TableFunctionInput &input, DataC
 // Table Function: read_fits(path, hdu := NULL, header := false, flatten := true)
 // ============================================================================
 
+template <typename T>
+static vector<Value> BufToList(T *buf, LONGLONG n) {
+	vector<Value> vals;
+	vals.reserve(static_cast<size_t>(n));
+	for (LONGLONG i = 0; i < n; i++) {
+		vals.push_back(Value(static_cast<double>(buf[i])));
+	}
+	return vals;
+}
+
 static unique_ptr<FunctionData> ReadFitsBind(ClientContext &, TableFunctionBindInput &input,
                                              vector<LogicalType> &return_types, vector<string> &names) {
 	auto path = input.inputs[0].GetValue<string>();
@@ -380,7 +390,7 @@ static void ReadFitsFunction(ClientContext &, TableFunctionInput &input, DataChu
 				case 'K': {
 					long long val = 0;
 					fits_read_col_lnglng(fptr, colnum, firstrow, 1, 1, 0, &val, nullptr, &fits_status);
-					out_vec.SetValue(out_idx, Value(val));
+					out_vec.SetValue(out_idx, Value(static_cast<int64_t>(val)));
 					break;
 				}
 				case 'B': {
@@ -454,39 +464,30 @@ static void ReadFitsFunction(ClientContext &, TableFunctionInput &input, DataChu
 		} else {
 			LONGLONG total = naxes[0] * (naxis > 1 ? naxes[1] : 1);
 
-			auto buf_to_list = [&](auto *buf, LONGLONG n) -> vector<Value> {
-				vector<Value> vals;
-				vals.reserve(static_cast<size_t>(n));
-				for (LONGLONG i = 0; i < n; i++) {
-					vals.push_back(Value(static_cast<double>(buf[i])));
-				}
-				return vals;
-			};
-
 			if (bitpix == -64) {
-				auto *buf = new double[static_cast<size_t>(total)];
+				double *buf = new double[static_cast<size_t>(total)];
 				fits_read_img_dbl(fptr, 0L, 1, total, 0.0, buf, nullptr, &fits_status);
-				output.data[0].SetValue(out_idx, Value::LIST(buf_to_list(buf, total)));
+				output.data[0].SetValue(out_idx, Value::LIST(BufToList(buf, total)));
 				delete[] buf;
 			} else if (bitpix == -32) {
-				auto *buf = new float[static_cast<size_t>(total)];
+				float *buf = new float[static_cast<size_t>(total)];
 				fits_read_img_flt(fptr, 0L, 1, total, 0.0f, buf, nullptr, &fits_status);
-				output.data[0].SetValue(out_idx, Value::LIST(buf_to_list(buf, total)));
+				output.data[0].SetValue(out_idx, Value::LIST(BufToList(buf, total)));
 				delete[] buf;
 			} else if (bitpix == 32) {
-				auto *buf = new int[static_cast<size_t>(total)];
+				int *buf = new int[static_cast<size_t>(total)];
 				fits_read_img_int(fptr, 0L, 1, total, 0, buf, nullptr, &fits_status);
-				output.data[0].SetValue(out_idx, Value::LIST(buf_to_list(buf, total)));
+				output.data[0].SetValue(out_idx, Value::LIST(BufToList(buf, total)));
 				delete[] buf;
 			} else if (bitpix == 16) {
-				auto *buf = new short[static_cast<size_t>(total)];
+				short *buf = new short[static_cast<size_t>(total)];
 				fits_read_img_sht(fptr, 0L, 1, total, 0, buf, nullptr, &fits_status);
-				output.data[0].SetValue(out_idx, Value::LIST(buf_to_list(buf, total)));
+				output.data[0].SetValue(out_idx, Value::LIST(BufToList(buf, total)));
 				delete[] buf;
 			} else {
-				auto *buf = new unsigned char[static_cast<size_t>(total)];
+				unsigned char *buf = new unsigned char[static_cast<size_t>(total)];
 				fits_read_img_byt(fptr, 0L, 1, total, 0, buf, nullptr, &fits_status);
-				output.data[0].SetValue(out_idx, Value::LIST(buf_to_list(buf, total)));
+				output.data[0].SetValue(out_idx, Value::LIST(BufToList(buf, total)));
 				delete[] buf;
 			}
 
