@@ -9,6 +9,13 @@ include_directories(src/include)
 
 # cfitsio: compile sources directly in this project so they stay out of the
 # DuckDB export set and inherit the parent's compiler environment.
+
+# Windows: cfitsio's flex-generated eval_l.c includes <unistd.h> which MSVC
+# doesn't provide; supply a stub from src/compat/ before the cfitsio includes.
+if(MSVC)
+    include_directories(BEFORE "${CMAKE_CURRENT_SOURCE_DIR}/src/compat")
+endif()
+
 include_directories(third_party/cfitsio)
 add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
 
@@ -77,6 +84,15 @@ set(CFITSIO_SOURCES
 )
 # zcompress.c requires zlib (gzip .fits.gz support); replaced with stubs in fits_zstubs.c.
 # drvrnet.c requires network stack; excluded for local-file-only builds.
+
+# macOS Clang promotes -Wimplicit-function-declaration to an error; suppress it
+# for cfitsio C sources (group.c uses getcwd without an explicit unistd.h include).
+if(APPLE)
+    foreach(cfitsio_src ${CFITSIO_SOURCES})
+        set_source_files_properties(${cfitsio_src} PROPERTIES
+            COMPILE_FLAGS "-Wno-implicit-function-declaration")
+    endforeach()
+endif()
 
 set(EXTENSION_SOURCES src/astro.cpp src/fits_read.cpp ${CFITSIO_SOURCES})
 
