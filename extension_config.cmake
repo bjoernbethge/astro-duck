@@ -7,6 +7,7 @@ duckdb_extension_load(astro
     SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}
     INCLUDE_DIR ${CMAKE_CURRENT_LIST_DIR}/src/include
     SOURCES ${CMAKE_CURRENT_LIST_DIR}/src/astro.cpp
+          ${CMAKE_CURRENT_LIST_DIR}/src/fits_read.cpp
 )
 
 # Any extra extensions that should be built

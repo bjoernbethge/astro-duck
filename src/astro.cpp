@@ -9,6 +9,7 @@
 #include "duckdb/common/vector_operations/ternary_executor.hpp"
 #include "duckdb/common/types/data_chunk.hpp"
 #include "duckdb/common/types/vector.hpp"
+#include "fits_types.hpp"
 
 #include <cmath>
 #include <sstream>
@@ -1484,6 +1485,8 @@ static void LoadInternal(ExtensionLoader &loader) {
     loader.RegisterFunction(ScalarFunction("astro_altaz_from_radec",
         {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE},
         altaz_type, AstroAltAzFromRadec));
+
+    RegisterFitsFunctions(loader);
 }
 
 void AstroExtension::Load(ExtensionLoader &loader) {
@@ -1498,7 +1501,7 @@ std::string AstroExtension::Version() const {
 #ifdef EXT_VERSION_ASTRO
     return EXT_VERSION_ASTRO;
 #else
-    return "3.1.0";
+    return "1.3.0";
 #endif
 }
 

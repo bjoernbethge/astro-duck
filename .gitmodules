@@ -6,3 +6,7 @@
 	path = extension-ci-tools
 	url = https://github.com/duckdb/extension-ci-tools
 	branch = main
+[submodule "third_party/cfitsio"]
+	path = third_party/cfitsio
+	url = https://github.com/healpy/cfitsio
+	branch = master

@@ -18,7 +18,7 @@ python test_astro.py      # Run Python test suite
 
 ```
 src/
-  astro.cpp               # All function implementations (53 functions)
+  astro.cpp               # All function implementations (59 functions)
   include/
     astro_extension.hpp   # Extension registration
 test/

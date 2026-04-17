@@ -39,8 +39,9 @@ LOAD '/path/to/astro.duckdb_extension';
 - **🪐 Celestial Body Models**: Stars, planets, brown dwarfs, black holes, asteroids
 - **🛰️ Orbital Mechanics**: Keplerian orbits, mean motion, position/velocity
 - **🧊 3D Spatial Octree**: Sector-based spatial indexing for N-body data
+- **🔭 FITS File I/O**: Read FITS tables and images directly into DuckDB (`fits_hdus`, `fits_header`, `read_fits`)
 
-## 📊 Functions (53)
+## 📊 Functions (62: 59 scalar + 3 table)
 
 ### Coordinate Transformations
 
@@ -153,6 +154,19 @@ Returns STRUCT with: `mass_kg`, `radius_m`, `luminosity_w`, `temperature_k`, `de
 | Function | Description | Example |
 |----------|-------------|---------|
 | `astro_dyn_gravity_accel(m1, pos1, m2, pos2)` | Gravitational acceleration | See examples below |
+
+### FITS File I/O
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `fits_hdus(path)` | List all HDUs (index, name, type) | `SELECT * FROM fits_hdus('file.fits');` |
+| `fits_header(path, hdu:=0)` | Read header keywords from an HDU | `SELECT * FROM fits_header('file.fits', hdu:=1);` |
+| `read_fits(path, hdu:=NULL, header:=false, flatten:=true)` | Read BINTABLE or IMAGE HDU as rows | `SELECT * FROM read_fits('file.fits', hdu:=1);` |
+
+`read_fits` supports:
+- **BINTABLE**: each row in the table becomes a DuckDB row; columns are typed to the FITS column types
+- **IMAGE**: with `flatten:=true` (default) each pixel becomes a row with coordinates; with `flatten:=false` returns one row with a nested LIST column
+- **`header:=true`**: prepend `_hdr_<keyword>` columns from the HDU header
 
 ### Sidereal Time & Observing
 
@@ -356,7 +370,7 @@ version; for a specific release use the version DOI.
 
 **Concept DOI (always-latest):** [10.5281/zenodo.19482715](https://doi.org/10.5281/zenodo.19482715)
 
-**Latest version DOI (v1.1.1):** [10.5281/zenodo.19482716](https://doi.org/10.5281/zenodo.19482716)
+**Latest version DOI (v1.4.0):** [10.5281/zenodo.19482716](https://doi.org/10.5281/zenodo.19482716)
 
 GitHub also reads `CITATION.cff` and shows a "Cite this repository" button
 in the right sidebar with auto-generated BibTeX / APA / RIS / EndNote
@@ -369,7 +383,7 @@ formats.
   author       = {Bethge, Björn},
   title        = {{astro-duck: A DuckDB extension for astronomical calculations}},
   year         = {2026},
-  version      = {1.1.1},
+  version      = {1.4.0},
   publisher    = {Zenodo},
   doi          = {10.5281/zenodo.19482715},
   url          = {https://doi.org/10.5281/zenodo.19482715}

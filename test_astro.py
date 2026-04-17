@@ -228,6 +228,36 @@ def main():
     total_passed += p
     total_failed += f
 
+    # FITS Support
+    from pathlib import Path
+    fits_file = str(Path(__file__).parent / "test" / "data" / "test.fits")
+    fits_gen = str(Path(__file__).parent / "test" / "data" / "generate_test_fits.py")
+
+    # Ensure test FITS file exists
+    if Path(fits_file).exists():
+        p, f = test_group("FITS Support", [
+            ("fits_hdus count",
+             f"SELECT COUNT(*) FROM fits_hdus('{fits_file}');"),
+            ("fits_hdus has IMAGE type",
+             f"SELECT hdu_type FROM fits_hdus('{fits_file}') WHERE hdu_index = 2;"),
+            ("fits_hdus has BINTABLE type",
+             f"SELECT hdu_type FROM fits_hdus('{fits_file}') WHERE hdu_index = 1;"),
+            ("fits_header returns keywords",
+             f"SELECT COUNT(*) > 0 FROM fits_header('{fits_file}', hdu:=1);"),
+            ("read_fits BINTABLE rows",
+             f"SELECT COUNT(*) FROM read_fits('{fits_file}', hdu:=1);"),
+            ("read_fits IMAGE flatten=true rows (4x3=12)",
+             f"SELECT COUNT(*) FROM read_fits('{fits_file}', hdu:=2);"),
+            ("read_fits IMAGE flatten=false rows (1)",
+             f"SELECT COUNT(*) FROM read_fits('{fits_file}', hdu:=2, flatten:=false);"),
+            ("read_fits with header columns",
+             f"SELECT COUNT(*) > 0 FROM read_fits('{fits_file}', hdu:=1, header:=true) WHERE _hdr_EXTNAME = 'TEST_TABLE';"),
+        ])
+        total_passed += p
+        total_failed += f
+    else:
+        print(f"\n  [SKIP] FITS tests: {fits_file} not found (run: python {fits_gen})")
+
     # Summary
     print("\n" + "="*50)
     print(" TEST SUMMARY")

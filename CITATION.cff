@@ -9,30 +9,33 @@ authors:
 repository-code: "https://github.com/synapticore-io/astro-duck"
 url: "https://github.com/synapticore-io/astro-duck"
 license: MIT
-version: "1.2.0"
-date-released: "2026-04-09"
+version: "1.4.0"
+date-released: "2026-04-17"
 identifiers:
   - type: doi
     value: "10.5281/zenodo.19482715"
     description: "Concept DOI - resolves to the latest version"
   - type: doi
     value: "10.5281/zenodo.19482716"
-    description: "DOI for version 1.1.1"
+    description: "DOI for version 1.4.0"
 abstract: >-
-  astro-duck is a DuckDB extension that brings astronomical
-  calculations to SQL: coordinate transforms (RA/Dec to Cartesian,
-  ICRS to galactic frames), angular separation on the celestial
-  sphere, photometric conversions (magnitude/flux, distance modulus,
-  absolute magnitude), CCM89 + O'Donnell 1994 dust extinction with
-  standard UBVRIJHK photometric bands, cosmological distances
-  (luminosity, comoving), celestial body models (main-sequence stars,
-  white dwarfs, neutron stars, black holes, brown dwarfs, rocky
-  planets, gas giants, ice giants, asteroids), Keplerian orbital
-  mechanics, 3D octree spatial indexing, and Newtonian gravitational
-  dynamics. It is designed for vectorized batch processing of
-  astronomical catalogs (Gaia DR3, SDSS, NASA Exoplanet Archive,
-  simulation snapshots) directly from Parquet files in a single
-  DuckDB process.
+  astro-duck is a DuckDB extension that brings 62 functions (59 scalar
+  + 3 FITS table functions) to SQL: coordinate
+  transforms (RA/Dec to Cartesian, ICRS to galactic frames), angular
+  separation on the celestial sphere, photometric conversions
+  (magnitude/flux, distance modulus, absolute magnitude), CCM89 +
+  O'Donnell 1994 dust extinction with standard UBVRIJHK photometric
+  bands, cosmological distances (luminosity, comoving), celestial body
+  models (main-sequence stars, white dwarfs, neutron stars, black
+  holes, brown dwarfs, rocky planets, gas giants, ice giants,
+  asteroids), Keplerian orbital mechanics, 3D octree spatial indexing,
+  Newtonian gravitational dynamics, sidereal time / observation
+  planning (GMST, LMST, hour angle, equatorial to horizontal alt/az
+  conversion, Julian Date from TIMESTAMP/TIMESTAMPTZ), and FITS file
+  I/O (fits_hdus, fits_header, read_fits via cfitsio). It is designed
+  for vectorized batch processing of astronomical catalogs (Gaia DR3,
+  SDSS, NASA Exoplanet Archive, simulation snapshots, FITS archives)
+  directly in a single DuckDB process.
 keywords:
   - duckdb
   - duckdb-extension
@@ -45,3 +48,5 @@ keywords:
   - dust-extinction
   - ccm89
   - orbital-mechanics
+  - fits
+  - cfitsio
