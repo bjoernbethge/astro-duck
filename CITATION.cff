@@ -16,7 +16,7 @@ identifiers:
     value: "10.5281/zenodo.19482715"
     description: "Concept DOI - resolves to the latest version"
   - type: doi
-    value: "10.5281/zenodo.19482716"
+    value: "10.5281/zenodo.19645339"
     description: "DOI for version 1.4.0"
 abstract: >-
   astro-duck is a DuckDB extension that brings 62 functions (59 scalar
