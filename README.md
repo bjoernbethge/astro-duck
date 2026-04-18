@@ -7,7 +7,7 @@ Comprehensive astronomical calculations and coordinate transformations for DuckD
 
 [![Build Status](https://github.com/synapticore-io/astro-duck/actions/workflows/MainDistributionPipeline.yml/badge.svg?branch=main)](https://github.com/synapticore-io/astro-duck/actions/workflows/MainDistributionPipeline.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![DuckDB](https://img.shields.io/badge/DuckDB-v1.5.1-blue.svg)](https://duckdb.org/)
+[![DuckDB](https://img.shields.io/badge/DuckDB-v1.5.2-blue.svg)](https://duckdb.org/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19482715.svg)](https://doi.org/10.5281/zenodo.19482715)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/synapticore-io/astro-duck)
 
