@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/hero.jpg" alt="astro-duck" width="420">
+</p>
+
 # 🌟 DuckDB Astro Extension
 Comprehensive astronomical calculations and coordinate transformations for DuckDB with modern integrations.
 
