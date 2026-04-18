@@ -61,3 +61,4 @@ _codeql_detected_source_root
 .serena/
 build_log.txt
 docs/superpowers/
+docs/COMMUNITY_POSTS.md

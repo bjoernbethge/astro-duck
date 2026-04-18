@@ -5,9 +5,9 @@ Thank you for your interest in contributing! This document provides guidelines f
 ## 🚀 Getting Started
 
 1. **Fork the repository** on GitHub
-2. **Clone your fork** locally:
+2. **Clone your fork** locally with submodules (duckdb, extension-ci-tools, cfitsio):
    ```bash
-   git clone https://github.com/YOUR_USERNAME/astro-duck.git
+   git clone --recursive https://github.com/YOUR_USERNAME/astro-duck.git
    cd astro-duck
    ```
 3. **Create a branch** for your feature:
@@ -18,7 +18,7 @@ Thank you for your interest in contributing! This document provides guidelines f
 ## 🏗️ Development Setup
 
 ### Prerequisites
-- CMake 3.15+
+- CMake 3.5+
 - C++17 compatible compiler
 - Python 3.7+ (for testing)
 - DuckDB development headers

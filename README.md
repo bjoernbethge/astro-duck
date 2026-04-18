@@ -237,14 +237,14 @@ SELECT astro_unit_time_to_s(1.0, 'yr');  -- 3.1557e7
 ## 🏗️ Building from Source
 
 ### Prerequisites
-- CMake 3.15+
+- CMake 3.5+
 - C++17 compatible compiler
 - DuckDB development headers
 
 ### Build Steps
 ```bash
-# Clone repository
-git clone https://github.com/synapticore-io/astro-duck.git
+# Clone repository with submodules (duckdb, extension-ci-tools, cfitsio)
+git clone --recursive https://github.com/synapticore-io/astro-duck.git
 cd astro-duck
 
 # Build extension
@@ -253,6 +253,9 @@ make clean && make release
 # Run tests
 python test_astro.py
 ```
+
+If you already cloned without `--recursive`, initialize the submodules with
+`git submodule update --init --recursive`.
 
 ## 📈 Performance
 
