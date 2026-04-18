@@ -263,11 +263,9 @@ If you already cloned without `--recursive`, initialize the submodules with
 
 ## 📈 Performance
 
-- **10,000 objects** processed in **0.003 seconds** (actual benchmark)
-- **Average angular separation**: 90.281° for random sky positions
-- **Average flux calculation**: 214,753.94 for magnitude range 10-20
-- Vectorized execution for optimal performance
-- Memory-efficient batch processing
+- **10,000 angular separations** in **~0.003 seconds** (vectorized C++)
+- Vectorized execution, memory-efficient batch processing
+- Scales to multi-million-row Parquet/FITS files via DuckDB's execution engine
 
 ## 🔧 Integration Examples
 
