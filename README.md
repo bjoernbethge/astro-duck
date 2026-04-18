@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/hero2.jpg" alt="astro-duck" width="420">
+  <img src="assets/hero.jpg" alt="astro-duck" width="420">
 </p>
 
 # 🌟 DuckDB Astro Extension
