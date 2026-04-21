@@ -386,7 +386,7 @@ formats.
 ```bibtex
 @software{bethge_astro_duck,
   author       = {Bethge, Björn},
-  title        = {{astro-duck: A DuckDB extension for astronomical calculations}},
+  title        = {{astro: A DuckDB extension for astronomical calculations (astro-duck)}},
   year         = {2026},
   version      = {1.4.1},
   publisher    = {Zenodo},

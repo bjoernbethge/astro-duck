@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use astro-duck in your research, please cite it as below."
-title: "astro-duck: A DuckDB extension for astronomical calculations"
+title: "astro: A DuckDB extension for astronomical calculations (astro-duck)"
 type: software
 authors:
   - given-names: Björn

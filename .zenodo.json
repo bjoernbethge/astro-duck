@@ -1,5 +1,5 @@
 {
-  "title": "astro-duck: A DuckDB extension for astronomical calculations",
+  "title": "astro: A DuckDB extension for astronomical calculations (astro-duck)",
   "description": "<p>astro-duck is a DuckDB extension that brings astronomical calculations to SQL. It provides coordinate transforms (RA/Dec to Cartesian, ICRS to galactic frames), angular separation on the celestial sphere, photometric conversions (magnitude/flux, distance modulus, absolute magnitude), CCM89 + O'Donnell 1994 dust extinction with standard UBVRIJHK photometric bands, cosmological distances (luminosity, comoving), celestial body models for main-sequence stars, white dwarfs, neutron stars, black holes, brown dwarfs, rocky planets, gas giants, ice giants and asteroids, Keplerian orbital mechanics, a 3D octree for spatial indexing, and Newtonian gravitational dynamics.</p><p>The extension is designed for vectorized batch processing of astronomical catalogs (Gaia DR3, SDSS, NASA Exoplanet Archive, simulation snapshots) directly from Parquet files in a single DuckDB process. It is distributed through the official DuckDB Community Extensions repository and can be installed with <code>INSTALL astro FROM community; LOAD astro;</code>.</p>",
   "creators": [
     {
