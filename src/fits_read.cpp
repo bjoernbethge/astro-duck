@@ -1,5 +1,8 @@
 #include "fits_types.hpp"
 
+#include "duckdb/main/extension/extension_loader.hpp"
+#include "duckdb/parser/parsed_data/create_table_function_info.hpp"
+
 namespace duckdb {
 
 static int CountHdus(fitsfile *fptr) {
@@ -506,6 +509,21 @@ static void ReadFitsFunction(ClientContext &, TableFunctionInput &input, DataChu
 // RegisterFitsFunctions
 // ============================================================================
 
+static FunctionDescription MakeFitsDescription(const vector<string> &param_names,
+                                                const vector<LogicalType> &param_types,
+                                                const char *description,
+                                                const char *example) {
+	FunctionDescription desc;
+	desc.parameter_names = param_names;
+	desc.parameter_types = param_types;
+	desc.description = description;
+	if (example) {
+		desc.examples.push_back(example);
+	}
+	desc.categories.push_back("astro.fits");
+	return desc;
+}
+
 void RegisterFitsFunctions(ExtensionLoader &loader) {
 	auto fits_hdus = TableFunction(
 		"fits_hdus",
@@ -513,7 +531,14 @@ void RegisterFitsFunctions(ExtensionLoader &loader) {
 		FitsHdusFunction,
 		FitsHdusBind
 	);
-	loader.RegisterFunction(fits_hdus);
+	{
+		CreateTableFunctionInfo info(fits_hdus);
+		info.descriptions.push_back(MakeFitsDescription(
+			{"path"}, {LogicalType::VARCHAR},
+			"List the HDUs (Header Data Units) of a FITS file. Returns one row per HDU with index, type, name and dimensions.",
+			"SELECT * FROM fits_hdus('image.fits');"));
+		loader.RegisterFunction(std::move(info));
+	}
 
 	auto fits_header = TableFunction(
 		"fits_header",
@@ -522,7 +547,14 @@ void RegisterFitsFunctions(ExtensionLoader &loader) {
 		FitsHeaderBind
 	);
 	fits_header.named_parameters["hdu"] = LogicalType::INTEGER;
-	loader.RegisterFunction(fits_header);
+	{
+		CreateTableFunctionInfo info(fits_header);
+		info.descriptions.push_back(MakeFitsDescription(
+			{"path"}, {LogicalType::VARCHAR},
+			"Read FITS header keywords from a file. Named parameter hdu (INTEGER) selects which HDU to read (default: primary).",
+			"SELECT * FROM fits_header('image.fits', hdu=1);"));
+		loader.RegisterFunction(std::move(info));
+	}
 
 	auto read_fits = TableFunction(
 		"read_fits",
@@ -534,7 +566,14 @@ void RegisterFitsFunctions(ExtensionLoader &loader) {
 	read_fits.named_parameters["header"] = LogicalType::BOOLEAN;
 	read_fits.named_parameters["flatten"] = LogicalType::BOOLEAN;
 #ifndef __EMSCRIPTEN__
-	loader.RegisterFunction(read_fits);
+	{
+		CreateTableFunctionInfo info(read_fits);
+		info.descriptions.push_back(MakeFitsDescription(
+			{"path"}, {LogicalType::VARCHAR},
+			"Read pixel data from a FITS image or table HDU. Named parameters: hdu (INTEGER, default primary), header (BOOLEAN, include header columns), flatten (BOOLEAN, flatten multi-dim arrays into one row per pixel).",
+			"SELECT * FROM read_fits('image.fits', hdu=1, flatten=true);"));
+		loader.RegisterFunction(std::move(info));
+	}
 #endif
 }
 

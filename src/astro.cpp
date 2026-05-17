@@ -9,6 +9,8 @@
 #include "duckdb/common/vector_operations/ternary_executor.hpp"
 #include "duckdb/common/types/data_chunk.hpp"
 #include "duckdb/common/types/vector.hpp"
+#include "duckdb/main/extension/extension_loader.hpp"
+#include "duckdb/parser/parsed_data/create_scalar_function_info.hpp"
 #include "fits_types.hpp"
 
 #include <cmath>
@@ -1368,6 +1370,77 @@ static void AstroAltAzFromRadec(DataChunk &args, ExpressionState &state, Vector 
 // EXTENSION REGISTRATION
 // ============================================================================
 // Note: DuckDB provides radians(), degrees(), pi() - no need to duplicate
+
+// Category names exposed via duckdb_functions().categories
+namespace astro_cat {
+constexpr const char *CONSTANTS = "astro.constants";
+constexpr const char *UNITS = "astro.units";
+constexpr const char *BODIES = "astro.bodies";
+constexpr const char *ORBITS = "astro.orbits";
+constexpr const char *DYNAMICS = "astro.dynamics";
+constexpr const char *FRAMES = "astro.frames";
+constexpr const char *SECTORS = "astro.sectors";
+constexpr const char *COORDS = "astro.coordinates";
+constexpr const char *PHOTOMETRY = "astro.photometry";
+constexpr const char *COSMOLOGY = "astro.cosmology";
+constexpr const char *EXTINCTION = "astro.extinction";
+constexpr const char *SIDEREAL = "astro.sidereal";
+constexpr const char *FITS = "astro.fits";
+}
+
+// One variant of a scalar function (one row in duckdb_functions()).
+struct AstroVariant {
+    vector<string> param_names;     // parallel to ScalarFunction::arguments
+    const char *description;
+    const char *example;            // single SQL example, nullptr if none
+    const char *category;
+};
+
+static FunctionDescription BuildFunctionDescription(const ScalarFunction &fn,
+                                                    const AstroVariant &v) {
+    FunctionDescription desc;
+    desc.parameter_names = v.param_names;
+    desc.parameter_types = fn.arguments;
+    if (v.description) {
+        desc.description = v.description;
+    }
+    if (v.example) {
+        desc.examples.push_back(v.example);
+    }
+    if (v.category) {
+        desc.categories.push_back(v.category);
+    }
+    return desc;
+}
+
+// Register a single-overload scalar function with its description.
+static void RegisterAstroScalar(ExtensionLoader &loader, const string &name,
+                                ScalarFunction fn, AstroVariant variant) {
+    fn.name = name;
+    ScalarFunctionSet set(name);
+    set.AddFunction(std::move(fn));
+    CreateScalarFunctionInfo info(set);
+    info.descriptions.push_back(BuildFunctionDescription(set.functions[0], variant));
+    loader.RegisterFunction(std::move(info));
+}
+
+// Register an overload set; one AstroVariant per ScalarFunction (same order).
+static void RegisterAstroScalarSet(ExtensionLoader &loader, const string &name,
+                                   vector<ScalarFunction> overloads,
+                                   vector<AstroVariant> variants) {
+    D_ASSERT(overloads.size() == variants.size());
+    ScalarFunctionSet set(name);
+    for (auto &fn : overloads) {
+        fn.name = name;
+        set.AddFunction(std::move(fn));
+    }
+    CreateScalarFunctionInfo info(set);
+    for (idx_t i = 0; i < set.functions.size(); i++) {
+        info.descriptions.push_back(BuildFunctionDescription(set.functions[i], variants[i]));
+    }
+    loader.RegisterFunction(std::move(info));
+}
+
 static void LoadInternal(ExtensionLoader &loader) {
     auto pos_type = GetAstroPosType();
     auto vel_type = GetAstroVelType();
@@ -1377,114 +1450,377 @@ static void LoadInternal(ExtensionLoader &loader) {
     auto bounds_type = GetSectorBoundsType();
     auto altaz_type = GetAstroAltAzType();
 
-    // Constants
-    loader.RegisterFunction(ScalarFunction("astro_const_c", {}, LogicalType::DOUBLE, AstroConstC));
-    loader.RegisterFunction(ScalarFunction("astro_const_G", {}, LogicalType::DOUBLE, AstroConstG));
-    loader.RegisterFunction(ScalarFunction("astro_const_M_sun", {}, LogicalType::DOUBLE, AstroConstMSun));
-    loader.RegisterFunction(ScalarFunction("astro_const_R_sun", {}, LogicalType::DOUBLE, AstroConstRSun));
-    loader.RegisterFunction(ScalarFunction("astro_const_L_sun", {}, LogicalType::DOUBLE, AstroConstLSun));
-    loader.RegisterFunction(ScalarFunction("astro_const_M_earth", {}, LogicalType::DOUBLE, AstroConstMEarth));
-    loader.RegisterFunction(ScalarFunction("astro_const_R_earth", {}, LogicalType::DOUBLE, AstroConstREarth));
-    loader.RegisterFunction(ScalarFunction("astro_const_AU", {}, LogicalType::DOUBLE, AstroConstAU));
-    loader.RegisterFunction(ScalarFunction("astro_const_pc", {}, LogicalType::DOUBLE, AstroConstPc));
-    loader.RegisterFunction(ScalarFunction("astro_const_ly", {}, LogicalType::DOUBLE, AstroConstLy));
-    loader.RegisterFunction(ScalarFunction("astro_const_sigma_sb", {}, LogicalType::DOUBLE, AstroConstSigmaSB));
+    // ------------------------------------------------------------------
+    // Constants (IAU 2015 nominal values where applicable; no parameters)
+    // ------------------------------------------------------------------
+    RegisterAstroScalar(loader, "astro_const_c",
+        ScalarFunction({}, LogicalType::DOUBLE, AstroConstC),
+        {{}, "Speed of light in vacuum, in m/s (CONST_C = 299792458).",
+         "SELECT astro_const_c();", astro_cat::CONSTANTS});
+    RegisterAstroScalar(loader, "astro_const_G",
+        ScalarFunction({}, LogicalType::DOUBLE, AstroConstG),
+        {{}, "Newtonian gravitational constant, in m^3/(kg*s^2) (6.67430e-11).",
+         "SELECT astro_const_G();", astro_cat::CONSTANTS});
+    RegisterAstroScalar(loader, "astro_const_M_sun",
+        ScalarFunction({}, LogicalType::DOUBLE, AstroConstMSun),
+        {{}, "Solar mass M_sun, in kg (1.98892e30).",
+         "SELECT astro_const_M_sun();", astro_cat::CONSTANTS});
+    RegisterAstroScalar(loader, "astro_const_R_sun",
+        ScalarFunction({}, LogicalType::DOUBLE, AstroConstRSun),
+        {{}, "Solar radius R_sun, in m (6.96340e8).",
+         "SELECT astro_const_R_sun();", astro_cat::CONSTANTS});
+    RegisterAstroScalar(loader, "astro_const_L_sun",
+        ScalarFunction({}, LogicalType::DOUBLE, AstroConstLSun),
+        {{}, "Solar luminosity L_sun, in W (3.828e26).",
+         "SELECT astro_const_L_sun();", astro_cat::CONSTANTS});
+    RegisterAstroScalar(loader, "astro_const_M_earth",
+        ScalarFunction({}, LogicalType::DOUBLE, AstroConstMEarth),
+        {{}, "Earth mass M_earth, in kg (5.9722e24).",
+         "SELECT astro_const_M_earth();", astro_cat::CONSTANTS});
+    RegisterAstroScalar(loader, "astro_const_R_earth",
+        ScalarFunction({}, LogicalType::DOUBLE, AstroConstREarth),
+        {{}, "Earth equatorial radius R_earth, in m (6.371e6).",
+         "SELECT astro_const_R_earth();", astro_cat::CONSTANTS});
+    RegisterAstroScalar(loader, "astro_const_AU",
+        ScalarFunction({}, LogicalType::DOUBLE, AstroConstAU),
+        {{}, "Astronomical unit, in m (1.495978707e11).",
+         "SELECT astro_const_AU();", astro_cat::CONSTANTS});
+    RegisterAstroScalar(loader, "astro_const_pc",
+        ScalarFunction({}, LogicalType::DOUBLE, AstroConstPc),
+        {{}, "Parsec, in m (3.0856775814913673e16).",
+         "SELECT astro_const_pc();", astro_cat::CONSTANTS});
+    RegisterAstroScalar(loader, "astro_const_ly",
+        ScalarFunction({}, LogicalType::DOUBLE, AstroConstLy),
+        {{}, "Light-year (Julian), in m (9.4607304725808e15).",
+         "SELECT astro_const_ly();", astro_cat::CONSTANTS});
+    RegisterAstroScalar(loader, "astro_const_sigma_sb",
+        ScalarFunction({}, LogicalType::DOUBLE, AstroConstSigmaSB),
+        {{}, "Stefan-Boltzmann constant, in W/(m^2*K^4) (5.670374419e-8).",
+         "SELECT astro_const_sigma_sb();", astro_cat::CONSTANTS});
 
+    // ------------------------------------------------------------------
     // Unit conversions
-    loader.RegisterFunction(ScalarFunction("astro_unit_length_to_m", {LogicalType::DOUBLE, LogicalType::VARCHAR}, LogicalType::DOUBLE, AstroUnitLengthToM));
-    loader.RegisterFunction(ScalarFunction("astro_unit_mass_to_kg", {LogicalType::DOUBLE, LogicalType::VARCHAR}, LogicalType::DOUBLE, AstroUnitMassToKg));
-    loader.RegisterFunction(ScalarFunction("astro_unit_time_to_s", {LogicalType::DOUBLE, LogicalType::VARCHAR}, LogicalType::DOUBLE, AstroUnitTimeToS));
-    loader.RegisterFunction(ScalarFunction("astro_unit_AU", {LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroUnitAU));
-    loader.RegisterFunction(ScalarFunction("astro_unit_pc", {LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroUnitpc));
-    loader.RegisterFunction(ScalarFunction("astro_unit_ly", {LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroUnitly));
-    loader.RegisterFunction(ScalarFunction("astro_unit_M_sun", {LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroUnitM_sun));
-    loader.RegisterFunction(ScalarFunction("astro_unit_M_earth", {LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroUnitM_earth));
+    // ------------------------------------------------------------------
+    RegisterAstroScalar(loader, "astro_unit_length_to_m",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::VARCHAR}, LogicalType::DOUBLE, AstroUnitLengthToM),
+        {{"value", "unit"},
+         "Convert a length value from the named unit to meters. Accepted units (case-insensitive): m, km, AU, ly, pc.",
+         "SELECT astro_unit_length_to_m(1.0, 'AU');", astro_cat::UNITS});
+    RegisterAstroScalar(loader, "astro_unit_mass_to_kg",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::VARCHAR}, LogicalType::DOUBLE, AstroUnitMassToKg),
+        {{"value", "unit"},
+         "Convert a mass value from the named unit to kilograms. Accepted units (case-insensitive): kg, M_sun, M_earth, M_jupiter.",
+         "SELECT astro_unit_mass_to_kg(1.0, 'M_sun');", astro_cat::UNITS});
+    RegisterAstroScalar(loader, "astro_unit_time_to_s",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::VARCHAR}, LogicalType::DOUBLE, AstroUnitTimeToS),
+        {{"value", "unit"},
+         "Convert a time value from the named unit to seconds. Accepted units (case-insensitive): s, min, h, d, yr (Julian year), Myr, Gyr.",
+         "SELECT astro_unit_time_to_s(1.0, 'yr');", astro_cat::UNITS});
+    RegisterAstroScalar(loader, "astro_unit_AU",
+        ScalarFunction({LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroUnitAU),
+        {{"value_au"}, "Convert a length in astronomical units to meters.",
+         "SELECT astro_unit_AU(1.0);", astro_cat::UNITS});
+    RegisterAstroScalar(loader, "astro_unit_pc",
+        ScalarFunction({LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroUnitpc),
+        {{"value_pc"}, "Convert a length in parsecs to meters.",
+         "SELECT astro_unit_pc(1.0);", astro_cat::UNITS});
+    RegisterAstroScalar(loader, "astro_unit_ly",
+        ScalarFunction({LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroUnitly),
+        {{"value_ly"}, "Convert a length in light-years to meters.",
+         "SELECT astro_unit_ly(1.0);", astro_cat::UNITS});
+    RegisterAstroScalar(loader, "astro_unit_M_sun",
+        ScalarFunction({LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroUnitM_sun),
+        {{"value_msun"}, "Convert a mass in solar masses to kilograms.",
+         "SELECT astro_unit_M_sun(1.0);", astro_cat::UNITS});
+    RegisterAstroScalar(loader, "astro_unit_M_earth",
+        ScalarFunction({LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroUnitM_earth),
+        {{"value_mearth"}, "Convert a mass in Earth masses to kilograms.",
+         "SELECT astro_unit_M_earth(1.0);", astro_cat::UNITS});
 
-    // Body models - Stars
-    loader.RegisterFunction(ScalarFunction("astro_body_star_main_sequence", {LogicalType::DOUBLE}, body_type, AstroBodyMakeStarMainSequence));
-    loader.RegisterFunction(ScalarFunction("astro_body_star_white_dwarf", {LogicalType::DOUBLE}, body_type, AstroBodyMakeStarWhiteDwarf));
-    loader.RegisterFunction(ScalarFunction("astro_body_star_neutron", {LogicalType::DOUBLE}, body_type, AstroBodyMakeStarNeutron));
-    loader.RegisterFunction(ScalarFunction("astro_body_brown_dwarf", {LogicalType::DOUBLE}, body_type, AstroBodyMakeBrownDwarf));
-    loader.RegisterFunction(ScalarFunction("astro_body_black_hole", {LogicalType::DOUBLE}, body_type, AstroBodyMakeBlackHole));
-    // Body models - Planets
-    loader.RegisterFunction(ScalarFunction("astro_body_planet_rocky", {LogicalType::DOUBLE}, body_type, AstroBodyMakePlanetRocky));
-    loader.RegisterFunction(ScalarFunction("astro_body_planet_gas_giant", {LogicalType::DOUBLE}, body_type, AstroBodyMakePlanetGasGiant));
-    loader.RegisterFunction(ScalarFunction("astro_body_planet_ice_giant", {LogicalType::DOUBLE}, body_type, AstroBodyMakePlanetIceGiant));
-    // Body models - Small bodies
-    loader.RegisterFunction(ScalarFunction("astro_body_asteroid", {LogicalType::DOUBLE, LogicalType::DOUBLE}, body_type, AstroBodyMakeAsteroid));
+    // ------------------------------------------------------------------
+    // Body models - return STRUCT{mass_kg, radius_m, luminosity_w, temperature_k, density_kg_m3, body_type}
+    // ------------------------------------------------------------------
+    RegisterAstroScalar(loader, "astro_body_star_main_sequence",
+        ScalarFunction({LogicalType::DOUBLE}, body_type, AstroBodyMakeStarMainSequence),
+        {{"mass_msun"},
+         "Main-sequence star from mass (in solar masses). Uses L~M^3.5, R~M^0.8 scaling; T derived via Stefan-Boltzmann.",
+         "SELECT astro_body_star_main_sequence(1.0);", astro_cat::BODIES});
+    RegisterAstroScalar(loader, "astro_body_star_white_dwarf",
+        ScalarFunction({LogicalType::DOUBLE}, body_type, AstroBodyMakeStarWhiteDwarf),
+        {{"mass_msun"},
+         "White dwarf from mass (in solar masses). Chandrasekhar mass-radius relation; cooling-curve T approximation.",
+         "SELECT astro_body_star_white_dwarf(0.6);", astro_cat::BODIES});
+    RegisterAstroScalar(loader, "astro_body_star_neutron",
+        ScalarFunction({LogicalType::DOUBLE}, body_type, AstroBodyMakeStarNeutron),
+        {{"mass_msun"},
+         "Neutron star from mass (in solar masses). Fixed radius ~11 km; simplified hot-young T ~ 1e6 K.",
+         "SELECT astro_body_star_neutron(1.4);", astro_cat::BODIES});
+    RegisterAstroScalar(loader, "astro_body_brown_dwarf",
+        ScalarFunction({LogicalType::DOUBLE}, body_type, AstroBodyMakeBrownDwarf),
+        {{"mass_mjup"},
+         "Brown dwarf from mass (in Jupiter masses, ~13-80). Radius near 0.1 R_sun (degeneracy); T scales with mass.",
+         "SELECT astro_body_brown_dwarf(50.0);", astro_cat::BODIES});
+    RegisterAstroScalar(loader, "astro_body_black_hole",
+        ScalarFunction({LogicalType::DOUBLE}, body_type, AstroBodyMakeBlackHole),
+        {{"mass_msun"},
+         "Non-rotating black hole from mass (in solar masses). Radius = Schwarzschild radius 2GM/c^2; luminosity/T set to zero.",
+         "SELECT astro_body_black_hole(10.0);", astro_cat::BODIES});
+    RegisterAstroScalar(loader, "astro_body_planet_rocky",
+        ScalarFunction({LogicalType::DOUBLE}, body_type, AstroBodyMakePlanetRocky),
+        {{"mass_mearth"},
+         "Rocky (terrestrial) planet from mass (in Earth masses). Chen & Kipping 2017 mass-radius relation.",
+         "SELECT astro_body_planet_rocky(1.0);", astro_cat::BODIES});
+    RegisterAstroScalar(loader, "astro_body_planet_gas_giant",
+        ScalarFunction({LogicalType::DOUBLE}, body_type, AstroBodyMakePlanetGasGiant),
+        {{"mass_mjup"},
+         "Gas giant from mass (in Jupiter masses). Roughly Jupiter-radius due to degeneracy pressure.",
+         "SELECT astro_body_planet_gas_giant(1.0);", astro_cat::BODIES});
+    RegisterAstroScalar(loader, "astro_body_planet_ice_giant",
+        ScalarFunction({LogicalType::DOUBLE}, body_type, AstroBodyMakePlanetIceGiant),
+        {{"mass_mnep"},
+         "Ice giant from mass (in Neptune masses). Higher density than gas giants; R~M^0.55 scaling.",
+         "SELECT astro_body_planet_ice_giant(1.0);", astro_cat::BODIES});
+    RegisterAstroScalar(loader, "astro_body_asteroid",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE}, body_type, AstroBodyMakeAsteroid),
+        {{"radius_km", "density_kg_m3"},
+         "Asteroid from radius (km) and bulk density (kg/m^3). Mass computed from sphere volume.",
+         "SELECT astro_body_asteroid(500.0, 2000.0);", astro_cat::BODIES});
 
-    // Orbit functions
-    loader.RegisterFunction(ScalarFunction("astro_orbit_make",
-        {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE,
-         LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::VARCHAR},
-        orbit_type, AstroOrbitMake));
-    loader.RegisterFunction(ScalarFunction("astro_orbit_period", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroOrbitPeriod));
-    loader.RegisterFunction(ScalarFunction("astro_orbit_mean_motion", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroOrbitMeanMotion));
-    loader.RegisterFunction(ScalarFunction("astro_orbit_position", {orbit_type, LogicalType::DOUBLE}, pos_type, AstroOrbitPosition));
-    loader.RegisterFunction(ScalarFunction("astro_orbit_velocity", {orbit_type, LogicalType::DOUBLE}, vel_type, AstroOrbitVelocity));
+    // ------------------------------------------------------------------
+    // Orbital mechanics (Keplerian, two-body)
+    // ------------------------------------------------------------------
+    RegisterAstroScalar(loader, "astro_orbit_make",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE,
+                         LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE,
+                         LogicalType::VARCHAR},
+                        orbit_type, AstroOrbitMake),
+        {{"a_m", "e", "i_rad", "omega_rad", "w_rad", "M0_rad", "epoch_jd", "central_mass_kg", "frame"},
+         "Construct a Keplerian orbit STRUCT from semi-major axis (m), eccentricity, inclination (rad), "
+         "longitude of ascending node Omega (rad), argument of periapsis w (rad), mean anomaly at epoch (rad), "
+         "epoch (Julian Date), central mass (kg) and reference frame name.",
+         "SELECT astro_orbit_make(1.496e11, 0.0167, 0.0, 0.0, 0.0, 0.0, 2451545.0, 1.989e30, 'icrs');",
+         astro_cat::ORBITS});
+    RegisterAstroScalar(loader, "astro_orbit_period",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroOrbitPeriod),
+        {{"a_m", "central_mass_kg"},
+         "Orbital period in seconds for a body with semi-major axis a_m around central mass M (Kepler's third law: T = 2*pi*sqrt(a^3/GM)). NaN if inputs <= 0.",
+         "SELECT astro_orbit_period(1.496e11, 1.989e30);", astro_cat::ORBITS});
+    RegisterAstroScalar(loader, "astro_orbit_mean_motion",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroOrbitMeanMotion),
+        {{"a_m", "central_mass_kg"},
+         "Mean motion n in rad/s for a Keplerian orbit (n = sqrt(GM/a^3)). NaN if inputs <= 0.",
+         "SELECT astro_orbit_mean_motion(1.496e11, 1.989e30);", astro_cat::ORBITS});
+    RegisterAstroScalar(loader, "astro_orbit_position",
+        ScalarFunction({orbit_type, LogicalType::DOUBLE}, pos_type, AstroOrbitPosition),
+        {{"orbit", "t_jd"},
+         "Cartesian position (m) at Julian Date t_jd for an orbit STRUCT produced by astro_orbit_make. Solves Kepler's equation via Newton-Raphson.",
+         "SELECT astro_orbit_position(orbit, 2451545.0) FROM bodies;", astro_cat::ORBITS});
+    RegisterAstroScalar(loader, "astro_orbit_velocity",
+        ScalarFunction({orbit_type, LogicalType::DOUBLE}, vel_type, AstroOrbitVelocity),
+        {{"orbit", "t_jd"},
+         "Cartesian velocity (m/s) at Julian Date t_jd for an orbit STRUCT produced by astro_orbit_make.",
+         "SELECT astro_orbit_velocity(orbit, 2451545.0) FROM bodies;", astro_cat::ORBITS});
 
+    // ------------------------------------------------------------------
     // Dynamics
-    loader.RegisterFunction(ScalarFunction("astro_dyn_gravity_accel",
-        {LogicalType::DOUBLE, pos_type, LogicalType::DOUBLE, pos_type}, vel_type, AstroDynGravityAccel));
+    // ------------------------------------------------------------------
+    RegisterAstroScalar(loader, "astro_dyn_gravity_accel",
+        ScalarFunction({LogicalType::DOUBLE, pos_type, LogicalType::DOUBLE, pos_type}, vel_type, AstroDynGravityAccel),
+        {{"m1_kg", "pos1", "m2_kg", "pos2"},
+         "Newtonian gravitational acceleration vector (m/s^2) on body 1 at pos1 due to body 2 at pos2 (a = G*m2*(pos2-pos1)/|pos2-pos1|^3). m1 is accepted for API symmetry but does not affect the result. Returns the result in the frame of pos1.",
+         "SELECT astro_dyn_gravity_accel(5.97e24, p1, 1.989e30, p2) FROM bodies;", astro_cat::DYNAMICS});
 
-    // Frame transforms
-    loader.RegisterFunction(ScalarFunction("astro_frame_transform_pos", {pos_type, LogicalType::VARCHAR, LogicalType::VARCHAR}, pos_type, AstroFrameTransformPos));
-    loader.RegisterFunction(ScalarFunction("astro_frame_transform_vel", {vel_type, LogicalType::VARCHAR, LogicalType::VARCHAR}, vel_type, AstroFrameTransformVel));
+    // ------------------------------------------------------------------
+    // Frame transforms (currently icrs/barycentric <-> galactic)
+    // ------------------------------------------------------------------
+    RegisterAstroScalar(loader, "astro_frame_transform_pos",
+        ScalarFunction({pos_type, LogicalType::VARCHAR, LogicalType::VARCHAR}, pos_type, AstroFrameTransformPos),
+        {{"pos", "from_frame", "to_frame"},
+         "Transform a position STRUCT between reference frames. Supported (case-insensitive): icrs <-> galactic; 'barycentric' is treated as a synonym for 'icrs'.",
+         "SELECT astro_frame_transform_pos(p, 'icrs', 'galactic') FROM stars;", astro_cat::FRAMES});
+    RegisterAstroScalar(loader, "astro_frame_transform_vel",
+        ScalarFunction({vel_type, LogicalType::VARCHAR, LogicalType::VARCHAR}, vel_type, AstroFrameTransformVel),
+        {{"vel", "from_frame", "to_frame"},
+         "Transform a velocity STRUCT between reference frames. Same frame support as astro_frame_transform_pos.",
+         "SELECT astro_frame_transform_vel(v, 'icrs', 'galactic') FROM stars;", astro_cat::FRAMES});
 
-    // Sectors
-    loader.RegisterFunction(ScalarFunction("astro_sector_id", {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::INTEGER}, sector_type, AstroSectorId));
-    loader.RegisterFunction(ScalarFunction("astro_sector_center", {sector_type}, pos_type, AstroSectorCenter));
-    loader.RegisterFunction(ScalarFunction("astro_sector_bounds", {sector_type}, bounds_type, AstroSectorBounds));
-    loader.RegisterFunction(ScalarFunction("astro_sector_parent", {sector_type}, sector_type, AstroSectorParent));
+    // ------------------------------------------------------------------
+    // Spatial sector index (octree-like grid, base size 1e12 m at level 0)
+    // ------------------------------------------------------------------
+    RegisterAstroScalar(loader, "astro_sector_id",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::INTEGER},
+                        sector_type, AstroSectorId),
+        {{"x_m", "y_m", "z_m", "level"},
+         "Sector index for a Cartesian point at the given level. Cell size = 1e12 m / 2^level; level must be >= 0.",
+         "SELECT astro_sector_id(x, y, z, 5) FROM positions;", astro_cat::SECTORS});
+    RegisterAstroScalar(loader, "astro_sector_center",
+        ScalarFunction({sector_type}, pos_type, AstroSectorCenter),
+        {{"sector"},
+         "Cartesian position (m) of the geometric center of a sector. Frame set to 'barycentric'.",
+         "SELECT astro_sector_center(sector_id) FROM sectors;", astro_cat::SECTORS});
+    RegisterAstroScalar(loader, "astro_sector_bounds",
+        ScalarFunction({sector_type}, bounds_type, AstroSectorBounds),
+        {{"sector"},
+         "Axis-aligned bounding box (min/max x,y,z in m) for a sector cell.",
+         "SELECT astro_sector_bounds(sector_id) FROM sectors;", astro_cat::SECTORS});
+    RegisterAstroScalar(loader, "astro_sector_parent",
+        ScalarFunction({sector_type}, sector_type, AstroSectorParent),
+        {{"sector"},
+         "Parent sector (one level coarser). Returns the sector itself if level is already 0.",
+         "SELECT astro_sector_parent(sector_id) FROM sectors;", astro_cat::SECTORS});
 
-    // Coordinates
-    loader.RegisterFunction(ScalarFunction("astro_radec_to_xyz", {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE}, pos_type, AstroRadecToXyz));
-    loader.RegisterFunction(ScalarFunction("astro_angular_separation", {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroAngularSeparation));
+    // ------------------------------------------------------------------
+    // Coordinates (RA/Dec, angular separation)
+    // ------------------------------------------------------------------
+    RegisterAstroScalar(loader, "astro_radec_to_xyz",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE}, pos_type, AstroRadecToXyz),
+        {{"ra_deg", "dec_deg", "distance"},
+         "Convert spherical equatorial coordinates (RA, Dec in degrees) plus a distance to a Cartesian position STRUCT. The distance is passed through unchanged; the resulting frame is 'icrs'.",
+         "SELECT astro_radec_to_xyz(45.0, 30.0, 10.0);", astro_cat::COORDS});
+    RegisterAstroScalar(loader, "astro_angular_separation",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE},
+                        LogicalType::DOUBLE, AstroAngularSeparation),
+        {{"ra1_deg", "dec1_deg", "ra2_deg", "dec2_deg"},
+         "Great-circle angular separation in degrees between two equatorial points, using the Haversine formula. NULL inputs propagate.",
+         "SELECT astro_angular_separation(45.0, 30.0, 46.0, 31.0);", astro_cat::COORDS});
 
+    // ------------------------------------------------------------------
     // Photometry
-    loader.RegisterFunction(ScalarFunction("astro_mag_to_flux", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroMagToFlux));
-    loader.RegisterFunction(ScalarFunction("astro_flux_to_mag", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroFluxToMag));
-    loader.RegisterFunction(ScalarFunction("astro_distance_modulus", {LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroDistanceModulus));
-    loader.RegisterFunction(ScalarFunction("astro_absolute_mag", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroAbsoluteMag));
+    // ------------------------------------------------------------------
+    RegisterAstroScalar(loader, "astro_mag_to_flux",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroMagToFlux),
+        {{"mag", "zeropoint"},
+         "Convert magnitude to flux given a photometric zeropoint: flux = 10^((zeropoint - mag) / 2.5).",
+         "SELECT astro_mag_to_flux(15.5, 25.0);", astro_cat::PHOTOMETRY});
+    RegisterAstroScalar(loader, "astro_flux_to_mag",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroFluxToMag),
+        {{"flux", "zeropoint"},
+         "Convert flux to magnitude given a photometric zeropoint: mag = -2.5*log10(flux) + zeropoint. NaN for flux <= 0.",
+         "SELECT astro_flux_to_mag(1000.0, 25.0);", astro_cat::PHOTOMETRY});
+    RegisterAstroScalar(loader, "astro_distance_modulus",
+        ScalarFunction({LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroDistanceModulus),
+        {{"distance_pc"},
+         "Distance modulus mu = 5*log10(d/pc) - 5 for a distance given in parsecs. NaN for d <= 0.",
+         "SELECT astro_distance_modulus(1000.0);", astro_cat::PHOTOMETRY});
+    RegisterAstroScalar(loader, "astro_absolute_mag",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroAbsoluteMag),
+        {{"apparent_mag", "distance_pc"},
+         "Absolute magnitude from apparent magnitude and distance in parsecs: M = m - 5*log10(d) + 5. NaN for d <= 0.",
+         "SELECT astro_absolute_mag(10.0, 100.0);", astro_cat::PHOTOMETRY});
 
-    // Cosmology
-    loader.RegisterFunction(ScalarFunction("astro_luminosity_distance", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroLuminosityDistance));
-    loader.RegisterFunction(ScalarFunction("astro_comoving_distance", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroComovingDistance));
+    // ------------------------------------------------------------------
+    // Cosmology (Hubble-law approximation, valid for z << 1)
+    // ------------------------------------------------------------------
+    RegisterAstroScalar(loader, "astro_luminosity_distance",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroLuminosityDistance),
+        {{"z", "H0_km_s_Mpc"},
+         "Luminosity distance in Mpc (Hubble-law approximation: D_L = c*z/H0). Valid for z << 1. H0 in km/s/Mpc.",
+         "SELECT astro_luminosity_distance(0.1, 70.0);", astro_cat::COSMOLOGY});
+    RegisterAstroScalar(loader, "astro_comoving_distance",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroComovingDistance),
+        {{"z", "H0_km_s_Mpc"},
+         "Comoving distance in Mpc (Hubble-law approximation: D_C = c*z/(H0*(1+z))). Valid for z << 1. H0 in km/s/Mpc.",
+         "SELECT astro_comoving_distance(0.1, 70.0);", astro_cat::COSMOLOGY});
 
+    // ------------------------------------------------------------------
     // Dust extinction (CCM89 + O'Donnell 1994)
-    // astro_extinction_av: with overload for default R_V=3.1
-    ScalarFunctionSet extinction_av("astro_extinction_av");
-    extinction_av.AddFunction(ScalarFunction({LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroExtinctionAvDefault));
-    extinction_av.AddFunction(ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroExtinctionAv));
-    loader.RegisterFunction(extinction_av);
+    // Each function has two overloads: default R_V=3.1 (Milky Way diffuse ISM) and explicit R_V.
+    // ------------------------------------------------------------------
+    RegisterAstroScalarSet(loader, "astro_extinction_av",
+        {
+            ScalarFunction({LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroExtinctionAvDefault),
+            ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroExtinctionAv),
+        },
+        {
+            {{"ebv"},
+             "V-band extinction A_V from reddening E(B-V) using default R_V=3.1 (Milky Way diffuse ISM): A_V = R_V * E(B-V).",
+             "SELECT astro_extinction_av(0.5);", astro_cat::EXTINCTION},
+            {{"ebv", "rv"},
+             "V-band extinction A_V from reddening E(B-V) and a custom total-to-selective extinction ratio R_V: A_V = R_V * E(B-V).",
+             "SELECT astro_extinction_av(0.5, 3.1);", astro_cat::EXTINCTION},
+        });
 
-    // astro_extinction_alambda: with overload for default R_V=3.1
-    ScalarFunctionSet extinction_alambda("astro_extinction_alambda");
-    extinction_alambda.AddFunction(ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroExtinctionAlambdaDefault));
-    extinction_alambda.AddFunction(ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroExtinctionAlambda));
-    loader.RegisterFunction(extinction_alambda);
+    RegisterAstroScalarSet(loader, "astro_extinction_alambda",
+        {
+            ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroExtinctionAlambdaDefault),
+            ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroExtinctionAlambda),
+        },
+        {
+            {{"wavelength_angstrom", "av"},
+             "Extinction A(lambda) in magnitudes at the given wavelength (Angstrom) given A_V, using CCM89 + O'Donnell 1994 with default R_V=3.1. NaN for wavelength <= 0.",
+             "SELECT astro_extinction_alambda(5494.5, 1.0);", astro_cat::EXTINCTION},
+            {{"wavelength_angstrom", "av", "rv"},
+             "Extinction A(lambda) in magnitudes at the given wavelength (Angstrom) given A_V and a custom R_V, using CCM89 + O'Donnell 1994. NaN for wavelength <= 0.",
+             "SELECT astro_extinction_alambda(5494.5, 1.0, 3.1);", astro_cat::EXTINCTION},
+        });
 
-    // astro_extinction_band: with overload for default R_V=3.1
-    ScalarFunctionSet extinction_band("astro_extinction_band");
-    extinction_band.AddFunction(ScalarFunction({LogicalType::VARCHAR, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroExtinctionBandDefault));
-    extinction_band.AddFunction(ScalarFunction({LogicalType::VARCHAR, LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroExtinctionBand));
-    loader.RegisterFunction(extinction_band);
+    RegisterAstroScalarSet(loader, "astro_extinction_band",
+        {
+            ScalarFunction({LogicalType::VARCHAR, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroExtinctionBandDefault),
+            ScalarFunction({LogicalType::VARCHAR, LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroExtinctionBand),
+        },
+        {
+            {{"band", "av"},
+             "Extinction in a photometric band (U, B, V, R, I, J, H, K/Ks) given A_V, using default R_V=3.1. Effective wavelengths from CCM89.",
+             "SELECT astro_extinction_band('V', 1.0);", astro_cat::EXTINCTION},
+            {{"band", "av", "rv"},
+             "Extinction in a photometric band (U, B, V, R, I, J, H, K/Ks) given A_V and a custom R_V.",
+             "SELECT astro_extinction_band('V', 1.0, 3.1);", astro_cat::EXTINCTION},
+        });
 
-    loader.RegisterFunction(ScalarFunction("astro_mag_deredden", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroMagDeredden));
-    loader.RegisterFunction(ScalarFunction("astro_flux_deredden", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroFluxDeredden));
-    loader.RegisterFunction(ScalarFunction("astro_color_excess", {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroColorExcess));
+    RegisterAstroScalar(loader, "astro_mag_deredden",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroMagDeredden),
+        {{"mag", "extinction"},
+         "De-redden an observed magnitude by subtracting the extinction A_lambda: mag_corr = mag - extinction.",
+         "SELECT astro_mag_deredden(15.5, 0.3);", astro_cat::EXTINCTION});
+    RegisterAstroScalar(loader, "astro_flux_deredden",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroFluxDeredden),
+        {{"flux", "extinction"},
+         "De-redden an observed flux given the extinction A_lambda in magnitudes: flux_corr = flux * 10^(A/2.5).",
+         "SELECT astro_flux_deredden(1000.0, 0.3);", astro_cat::EXTINCTION});
+    RegisterAstroScalar(loader, "astro_color_excess",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroColorExcess),
+        {{"mag1", "mag2", "intrinsic_color"},
+         "Color excess E(mag1 - mag2) = (mag1 - mag2)_observed - intrinsic_color.",
+         "SELECT astro_color_excess(15.0, 14.0, 0.6);", astro_cat::EXTINCTION});
 
+    // ------------------------------------------------------------------
     // Sidereal time & observing
-    ScalarFunctionSet jd_set("astro_jd_from_timestamp");
-    jd_set.AddFunction(ScalarFunction({LogicalType::TIMESTAMP}, LogicalType::DOUBLE, AstroJdFromTimestamp));
-    jd_set.AddFunction(ScalarFunction({LogicalType::TIMESTAMP_TZ}, LogicalType::DOUBLE, AstroJdFromTimestamp));
-    loader.RegisterFunction(jd_set);
-    loader.RegisterFunction(ScalarFunction("astro_gmst", {LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroGmst));
-    loader.RegisterFunction(ScalarFunction("astro_lmst", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroLmst));
-    loader.RegisterFunction(ScalarFunction("astro_hour_angle", {LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroHourAngle));
-    loader.RegisterFunction(ScalarFunction("astro_altaz_from_radec",
-        {LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE},
-        altaz_type, AstroAltAzFromRadec));
+    // ------------------------------------------------------------------
+    RegisterAstroScalarSet(loader, "astro_jd_from_timestamp",
+        {
+            ScalarFunction({LogicalType::TIMESTAMP}, LogicalType::DOUBLE, AstroJdFromTimestamp),
+            ScalarFunction({LogicalType::TIMESTAMP_TZ}, LogicalType::DOUBLE, AstroJdFromTimestamp),
+        },
+        {
+            {{"ts"},
+             "Julian Date (UT) from a TIMESTAMP (interpreted as UTC). Unix epoch 1970-01-01 maps to JD 2440587.5.",
+             "SELECT astro_jd_from_timestamp(TIMESTAMP '2000-01-01 12:00:00');", astro_cat::SIDEREAL},
+            {{"ts"},
+             "Julian Date (UT) from a TIMESTAMP WITH TIME ZONE. Internally converted to UTC.",
+             "SELECT astro_jd_from_timestamp(TIMESTAMPTZ '2000-01-01 12:00:00+00');", astro_cat::SIDEREAL},
+        });
+    RegisterAstroScalar(loader, "astro_gmst",
+        ScalarFunction({LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroGmst),
+        {{"jd"},
+         "Greenwich Mean Sidereal Time in hours [0, 24) from a Julian Date (UT1). Meeus (1998) eq. 12.4; accurate to a few seconds near J2000.",
+         "SELECT astro_gmst(2451545.0);", astro_cat::SIDEREAL});
+    RegisterAstroScalar(loader, "astro_lmst",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroLmst),
+        {{"jd", "longitude_deg_east"},
+         "Local Mean Sidereal Time in hours [0, 24). Eastern longitudes are positive (LMST = GMST + lon/15h).",
+         "SELECT astro_lmst(2451545.0, 13.4);", astro_cat::SIDEREAL});
+    RegisterAstroScalar(loader, "astro_hour_angle",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE}, LogicalType::DOUBLE, AstroHourAngle),
+        {{"ra_deg", "lmst_hours"},
+         "Hour angle in hours in (-12, 12]: negative means east of the meridian (rising), positive means west (setting), 0 means transit.",
+         "SELECT astro_hour_angle(45.0, 10.0);", astro_cat::SIDEREAL});
+    RegisterAstroScalar(loader, "astro_altaz_from_radec",
+        ScalarFunction({LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE, LogicalType::DOUBLE},
+                        altaz_type, AstroAltAzFromRadec),
+        {{"ra_deg", "dec_deg", "lmst_hours", "latitude_deg"},
+         "Altitude/azimuth STRUCT from RA/Dec, LMST and observer latitude (all degrees, LMST in hours). Azimuth measured from North through East (0=N, 90=E, 180=S, 270=W).",
+         "SELECT astro_altaz_from_radec(45.0, 30.0, 10.0, 48.0);", astro_cat::SIDEREAL});
 
     RegisterFitsFunctions(loader);
 }

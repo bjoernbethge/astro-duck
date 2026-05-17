@@ -47,16 +47,63 @@ LOAD '/path/to/astro.duckdb_extension';
 
 ## 📊 Functions (62: 59 scalar + 3 table)
 
-### Coordinate Transformations
+Every function is registered with parameter names, a description, an example
+and a category. They are all introspectable via `duckdb_functions()`:
+
+```sql
+-- All astro functions of one category, with their inline help
+SELECT function_name, parameters, description
+FROM duckdb_functions()
+WHERE list_contains(categories, 'astro.photometry')
+ORDER BY function_name;
+
+-- All categories shipped by this extension
+SELECT DISTINCT unnest(categories) AS category
+FROM duckdb_functions()
+WHERE function_name LIKE 'astro\_%' ESCAPE '\'
+   OR function_name IN ('fits_hdus', 'fits_header', 'read_fits')
+ORDER BY category;
+```
+
+| Category | Section below |
+|----------|---------------|
+| `astro.constants` | [Physical Constants](#physical-constants) |
+| `astro.units` | [Unit Conversions](#unit-conversions) |
+| `astro.bodies` | [Celestial Body Models](#celestial-body-models) |
+| `astro.orbits` | [Orbital Mechanics](#orbital-mechanics) |
+| `astro.dynamics` | [Dynamics](#dynamics) |
+| `astro.frames` | [Frame Transforms](#frame-transforms) |
+| `astro.sectors` | [Spatial Sectors (3D Octree)](#spatial-sectors-3d-octree) |
+| `astro.coordinates` | [Coordinates](#coordinates) |
+| `astro.photometry` | [Photometry](#photometry) |
+| `astro.cosmology` | [Cosmology](#cosmology) |
+| `astro.extinction` | [Dust Extinction (CCM89)](#dust-extinction-ccm89) |
+| `astro.sidereal` | [Sidereal Time & Observing](#sidereal-time--observing) |
+| `astro.fits` | [FITS File I/O](#fits-file-io) |
+
+### Coordinates
+
+*Category: `astro.coordinates`*
 
 | Function | Description | Example |
 |----------|-------------|---------|
 | `astro_angular_separation(ra1, dec1, ra2, dec2)` | Angular distance (Haversine) | `SELECT astro_angular_separation(45.0, 30.0, 46.0, 31.0);` |
 | `astro_radec_to_xyz(ra, dec, dist)` | RA/Dec to Cartesian STRUCT | `SELECT astro_radec_to_xyz(45.0, 30.0, 10.0);` |
+
+### Frame Transforms
+
+*Category: `astro.frames`*
+
+Supported frames (case-insensitive): `icrs` ↔ `galactic`; `barycentric` is treated as a synonym for `icrs`.
+
+| Function | Description | Example |
+|----------|-------------|---------|
 | `astro_frame_transform_pos(pos, from, to)` | Transform position between frames | `SELECT astro_frame_transform_pos(pos, 'icrs', 'galactic');` |
 | `astro_frame_transform_vel(vel, from, to)` | Transform velocity between frames | `SELECT astro_frame_transform_vel(vel, 'icrs', 'galactic');` |
 
 ### Photometry
+
+*Category: `astro.photometry`*
 
 | Function | Description | Example |
 |----------|-------------|---------|
@@ -66,6 +113,8 @@ LOAD '/path/to/astro.duckdb_extension';
 | `astro_distance_modulus(dist_pc)` | Distance modulus | `SELECT astro_distance_modulus(1000.0);` |
 
 ### Dust Extinction (CCM89)
+
+*Category: `astro.extinction`*
 
 Interstellar dust extinction using the Cardelli, Clayton & Mathis (1989) extinction law with O'Donnell (1994) optical coefficients.
 
@@ -84,12 +133,20 @@ Interstellar dust extinction using the Cardelli, Clayton & Mathis (1989) extinct
 
 ### Cosmology
 
+*Category: `astro.cosmology`*
+
+Hubble-law approximations, valid for z ≪ 1. H0 in km/s/Mpc.
+
 | Function | Description | Example |
 |----------|-------------|---------|
 | `astro_luminosity_distance(z, h0)` | Luminosity distance (Mpc) | `SELECT astro_luminosity_distance(0.1, 70.0);` |
 | `astro_comoving_distance(z, h0)` | Comoving distance | `SELECT astro_comoving_distance(1.0, 70.0);` |
 
 ### Physical Constants
+
+*Category: `astro.constants`*
+
+IAU 2015 nominal values where applicable. All zero-argument functions.
 
 | Function | Value | Description |
 |----------|-------|-------------|
@@ -107,6 +164,8 @@ Interstellar dust extinction using the Cardelli, Clayton & Mathis (1989) extinct
 
 ### Unit Conversions
 
+*Category: `astro.units`*
+
 | Function | Description | Example |
 |----------|-------------|---------|
 | `astro_unit_AU(n)` | n AU in meters | `SELECT astro_unit_AU(1.0);` |
@@ -119,6 +178,8 @@ Interstellar dust extinction using the Cardelli, Clayton & Mathis (1989) extinct
 | `astro_unit_time_to_s(val, unit)` | Convert time to seconds | `SELECT astro_unit_time_to_s(1.0, 'yr');` |
 
 ### Celestial Body Models
+
+*Category: `astro.bodies`*
 
 Returns STRUCT with: `mass_kg`, `radius_m`, `luminosity_w`, `temperature_k`, `density_kg_m3`, `body_type`
 
@@ -136,6 +197,10 @@ Returns STRUCT with: `mass_kg`, `radius_m`, `luminosity_w`, `temperature_k`, `de
 
 ### Orbital Mechanics
 
+*Category: `astro.orbits`*
+
+Keplerian two-body orbits. `astro_orbit_make` produces the orbit STRUCT consumed by the other functions.
+
 | Function | Description | Example |
 |----------|-------------|---------|
 | `astro_orbit_period(a_m, M_kg)` | Kepler orbital period (s) | `SELECT astro_orbit_period(1.496e11, 1.989e30);` |
@@ -146,6 +211,10 @@ Returns STRUCT with: `mass_kg`, `radius_m`, `luminosity_w`, `temperature_k`, `de
 
 ### Spatial Sectors (3D Octree)
 
+*Category: `astro.sectors`*
+
+Octree-like spatial index. Base cell size = 1e12 m at level 0; cell size = `1e12 / 2^level`.
+
 | Function | Description | Example |
 |----------|-------------|---------|
 | `astro_sector_id(x, y, z, level)` | Get sector ID for position | `SELECT astro_sector_id(1.0, 0.0, 0.0, 3);` |
@@ -155,11 +224,15 @@ Returns STRUCT with: `mass_kg`, `radius_m`, `luminosity_w`, `temperature_k`, `de
 
 ### Dynamics
 
+*Category: `astro.dynamics`*
+
 | Function | Description | Example |
 |----------|-------------|---------|
-| `astro_dyn_gravity_accel(m1, pos1, m2, pos2)` | Gravitational acceleration | See examples below |
+| `astro_dyn_gravity_accel(m1, pos1, m2, pos2)` | Gravitational acceleration on body 1 due to body 2 (m1 is accepted for API symmetry but does not affect the result) | See examples below |
 
 ### FITS File I/O
+
+*Category: `astro.fits`*
 
 | Function | Description | Example |
 |----------|-------------|---------|
@@ -173,6 +246,8 @@ Returns STRUCT with: `mass_kg`, `radius_m`, `luminosity_w`, `temperature_k`, `de
 - **`header:=true`**: prepend `_hdr_<keyword>` columns from the HDU header
 
 ### Sidereal Time & Observing
+
+*Category: `astro.sidereal`*
 
 | Function | Description | Example |
 |----------|-------------|---------|
