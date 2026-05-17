@@ -450,7 +450,9 @@ version; for a specific release use the version DOI.
 
 **Concept DOI (always-latest):** [10.5281/zenodo.19482715](https://doi.org/10.5281/zenodo.19482715)
 
-**Latest version DOI (v1.4.1):** [10.5281/zenodo.19645905](https://doi.org/10.5281/zenodo.19645905)
+Version-specific DOIs (e.g. `10.5281/zenodo.19645905` for v1.4.1) are
+assigned by Zenodo when a GitHub Release is published and are listed on
+the corresponding release page.
 
 GitHub also reads `CITATION.cff` and shows a "Cite this repository" button
 in the right sidebar with auto-generated BibTeX / APA / RIS / EndNote
@@ -463,7 +465,7 @@ formats.
   author       = {Bethge, Björn},
   title        = {{astro: A DuckDB extension for astronomical calculations (astro-duck)}},
   year         = {2026},
-  version      = {1.4.1},
+  version      = {1.4.2},
   publisher    = {Zenodo},
   doi          = {10.5281/zenodo.19482715},
   url          = {https://doi.org/10.5281/zenodo.19482715}

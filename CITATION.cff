@@ -9,15 +9,12 @@ authors:
 repository-code: "https://github.com/synapticore-io/astro-duck"
 url: "https://github.com/synapticore-io/astro-duck"
 license: MIT
-version: "1.4.1"
-date-released: "2026-04-18"
+version: "1.4.2"
+date-released: "2026-05-18"
 identifiers:
   - type: doi
     value: "10.5281/zenodo.19482715"
     description: "Concept DOI - resolves to the latest version"
-  - type: doi
-    value: "10.5281/zenodo.19645905"
-    description: "DOI for version 1.4.1"
 abstract: >-
   astro-duck is a DuckDB extension that brings 62 functions (59 scalar
   + 3 FITS table functions) to SQL: coordinate
