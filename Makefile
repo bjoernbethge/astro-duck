@@ -25,6 +25,10 @@ endif
 
 test_release_internal:
 	@echo "=== test_release_internal debug ===" && pwd && echo "OS=$(OS) UNITTEST_BIN=$(UNITTEST_BIN)" && ls -la build/release/test/ 2>&1 || true
+	@echo "--- file type ---" && file build/release/test/unittest.exe 2>&1 || true
+	@echo "--- try --help ---" && ./build/release/test/unittest.exe --help 2>&1 | head -3 || echo "rc=$$?"
+	@echo "--- try via cmd ---" && cmd //c "build\\release\\test\\unittest.exe --help" 2>&1 | head -3 || echo "rc=$$?"
+	@echo "--- now actual test run ---"
 	./build/release/$(UNITTEST_BIN) "test/*"
 test_debug_internal:
 	./build/debug/$(UNITTEST_BIN) "test/*"
