@@ -85,14 +85,26 @@ set(CFITSIO_SOURCES
 # zcompress.c requires zlib (gzip .fits.gz support); replaced with stubs in fits_zstubs.c.
 # drvrnet.c requires network stack; excluded for local-file-only builds.
 
-# macOS Clang promotes -Wimplicit-function-declaration to an error; suppress it
-# for cfitsio C sources (group.c uses getcwd without an explicit unistd.h include).
-if(APPLE)
-    foreach(cfitsio_src ${CFITSIO_SOURCES})
+# Per-source compile flags for the vendored cfitsio C files:
+#   * macOS Clang promotes -Wimplicit-function-declaration to an error
+#     (group.c uses getcwd without an explicit unistd.h include).
+#   * Newer gcc (>=15) defaults to C23, where `nullptr` is a reserved
+#     keyword. cfitsio's putcol.c uses `nullptr` as an ordinary variable
+#     name (`char *nullptr`), so pin the C standard to gnu11 on GCC/Clang.
+foreach(cfitsio_src ${CFITSIO_SOURCES})
+    set(_cfitsio_flags "")
+    if(APPLE)
+        set(_cfitsio_flags "${_cfitsio_flags} -Wno-implicit-function-declaration")
+    endif()
+    if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER_ID STREQUAL "Clang"
+       OR CMAKE_C_COMPILER_ID STREQUAL "AppleClang")
+        set(_cfitsio_flags "${_cfitsio_flags} -std=gnu11")
+    endif()
+    if(_cfitsio_flags)
         set_source_files_properties(${cfitsio_src} PROPERTIES
-            COMPILE_FLAGS "-Wno-implicit-function-declaration")
-    endforeach()
-endif()
+            COMPILE_FLAGS "${_cfitsio_flags}")
+    endif()
+endforeach()
 
 set(EXTENSION_SOURCES src/astro.cpp src/fits_read.cpp ${CFITSIO_SOURCES})
 
