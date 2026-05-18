@@ -1837,7 +1837,7 @@ std::string AstroExtension::Version() const {
 #ifdef EXT_VERSION_ASTRO
     return EXT_VERSION_ASTRO;
 #else
-    return "1.4.3";
+    return "1.4.4";
 #endif
 }
 
