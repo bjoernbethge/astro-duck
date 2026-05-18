@@ -19,32 +19,32 @@ include extension-ci-tools/makefiles/duckdb_extension.Makefile
 #    which expand to `./build/release/"/test/unittest" ""test/"*"`. The
 #    explicit form below is more robust on every platform.
 #
-# 2. The Windows unittest.exe is dynamically linked against libduckdb.dll
-#    (build/release/src/libduckdb.dll), but Windows' Secure DLL Search
-#    Mode ignores PATH for dependent DLLs and only searches the .exe's
-#    own directory and CWD. Copy libduckdb.dll next to unittest.exe
-#    before invoking it (cp -u so we only touch it once).
+# 2. The Windows unittest.exe is built with MinGW gcc and dynamically
+#    linked against libduckdb.dll plus the MinGW runtime DLLs
+#    (libgcc_s_seh-1.dll, libstdc++-6.dll, libwinpthread-1.dll). Windows'
+#    Secure DLL Search Mode ignores PATH for dependent DLLs and only
+#    resolves them from the .exe's own directory and CWD, so the loader
+#    silently failed (exit 127, no output) without these DLLs staged.
+#    Copy all four next to unittest.exe before invoking it.
 ifeq ($(OS),Windows_NT)
+# Stage libduckdb.dll (from build/<type>/src) and the MinGW runtime DLLs
+# (from C:/mingw64/bin) next to unittest.exe; the leading '-' makes make
+# tolerate a missing source (in case the build is reconfigured later).
+define STAGE_WIN_DLLS
+	-cp -f build/$(1)/src/libduckdb.dll build/$(1)/test/
+	-cp -f C:/mingw64/bin/libgcc_s_seh-1.dll build/$(1)/test/
+	-cp -f C:/mingw64/bin/libstdc++-6.dll build/$(1)/test/
+	-cp -f C:/mingw64/bin/libwinpthread-1.dll build/$(1)/test/
+endef
+
 test_release_internal:
-	@echo "--- stage Windows DLLs (debug) ---"
-	@echo "src DLLs:" && ls -la build/release/src/*.dll 2>&1 || true
-	-cp -f build/release/src/libduckdb.dll build/release/test/
-	-cp -f C:/mingw64/bin/libgcc_s_seh-1.dll build/release/test/
-	-cp -f C:/mingw64/bin/libstdc++-6.dll build/release/test/
-	-cp -f C:/mingw64/bin/libwinpthread-1.dll build/release/test/
-	@echo "test/ after staging:" && ls -la build/release/test/ 2>&1 || true
+	$(call STAGE_WIN_DLLS,release)
 	./build/release/test/unittest.exe "test/*"
 test_debug_internal:
-	-cp -f build/debug/src/libduckdb.dll build/debug/test/
-	-cp -f C:/mingw64/bin/libgcc_s_seh-1.dll build/debug/test/
-	-cp -f C:/mingw64/bin/libstdc++-6.dll build/debug/test/
-	-cp -f C:/mingw64/bin/libwinpthread-1.dll build/debug/test/
+	$(call STAGE_WIN_DLLS,debug)
 	./build/debug/test/unittest.exe "test/*"
 test_reldebug_internal:
-	-cp -f build/reldebug/src/libduckdb.dll build/reldebug/test/
-	-cp -f C:/mingw64/bin/libgcc_s_seh-1.dll build/reldebug/test/
-	-cp -f C:/mingw64/bin/libstdc++-6.dll build/reldebug/test/
-	-cp -f C:/mingw64/bin/libwinpthread-1.dll build/reldebug/test/
+	$(call STAGE_WIN_DLLS,reldebug)
 	./build/reldebug/test/unittest.exe "test/*"
 else
 test_release_internal:
