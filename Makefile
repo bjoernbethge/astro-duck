@@ -20,21 +20,27 @@ include extension-ci-tools/makefiles/duckdb_extension.Makefile
 #    explicit form below is more robust on every platform.
 #
 # 2. The Windows unittest.exe is dynamically linked against libduckdb.dll
-#    (build/release/src/libduckdb.dll), but Windows only searches the
-#    .exe's own directory and CWD. Without libduckdb.dll on the loader's
-#    search path, unittest.exe silently fails to start (exit 127, no
-#    output). Prepend build/release/src to PATH for the test run.
+#    (build/release/src/libduckdb.dll), but Windows' Secure DLL Search
+#    Mode ignores PATH for dependent DLLs and only searches the .exe's
+#    own directory and CWD. Copy libduckdb.dll next to unittest.exe
+#    before invoking it (cp -u so we only touch it once).
 ifeq ($(OS),Windows_NT)
     UNITTEST_BIN := test/unittest.exe
-    TEST_PREFIX := PATH="$$(pwd)/build/release/src:$$PATH"
+    define STAGE_TEST_DLLS
+	@cp -u build/$(1)/src/libduckdb.dll build/$(1)/test/ 2>/dev/null || true
+    endef
 else
     UNITTEST_BIN := test/unittest
-    TEST_PREFIX :=
+    define STAGE_TEST_DLLS
+    endef
 endif
 
 test_release_internal:
-	$(TEST_PREFIX) ./build/release/$(UNITTEST_BIN) "test/*"
+	$(call STAGE_TEST_DLLS,release)
+	./build/release/$(UNITTEST_BIN) "test/*"
 test_debug_internal:
-	$(TEST_PREFIX) ./build/debug/$(UNITTEST_BIN) "test/*"
+	$(call STAGE_TEST_DLLS,debug)
+	./build/debug/$(UNITTEST_BIN) "test/*"
 test_reldebug_internal:
-	$(TEST_PREFIX) ./build/reldebug/$(UNITTEST_BIN) "test/*"
+	$(call STAGE_TEST_DLLS,reldebug)
+	./build/reldebug/$(UNITTEST_BIN) "test/*"
