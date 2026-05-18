@@ -465,7 +465,7 @@ formats.
   author       = {Bethge, Björn},
   title        = {{astro: A DuckDB extension for astronomical calculations (astro-duck)}},
   year         = {2026},
-  version      = {1.4.5},
+  version      = {1.4.2},
   publisher    = {Zenodo},
   doi          = {10.5281/zenodo.19482715},
   url          = {https://doi.org/10.5281/zenodo.19482715}
