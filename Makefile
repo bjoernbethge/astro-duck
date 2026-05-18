@@ -25,22 +25,32 @@ include extension-ci-tools/makefiles/duckdb_extension.Makefile
 #    own directory and CWD. Copy libduckdb.dll next to unittest.exe
 #    before invoking it (cp -u so we only touch it once).
 ifeq ($(OS),Windows_NT)
-    UNITTEST_BIN := test/unittest.exe
-    define STAGE_TEST_DLLS
-	@cp -u build/$(1)/src/libduckdb.dll build/$(1)/test/ 2>/dev/null || true
-    endef
-else
-    UNITTEST_BIN := test/unittest
-    define STAGE_TEST_DLLS
-    endef
-endif
-
 test_release_internal:
-	$(call STAGE_TEST_DLLS,release)
-	./build/release/$(UNITTEST_BIN) "test/*"
+	@echo "--- stage Windows DLLs (debug) ---"
+	@echo "src DLLs:" && ls -la build/release/src/*.dll 2>&1 || true
+	-cp -f build/release/src/libduckdb.dll build/release/test/
+	-cp -f C:/mingw64/bin/libgcc_s_seh-1.dll build/release/test/
+	-cp -f C:/mingw64/bin/libstdc++-6.dll build/release/test/
+	-cp -f C:/mingw64/bin/libwinpthread-1.dll build/release/test/
+	@echo "test/ after staging:" && ls -la build/release/test/ 2>&1 || true
+	./build/release/test/unittest.exe "test/*"
 test_debug_internal:
-	$(call STAGE_TEST_DLLS,debug)
-	./build/debug/$(UNITTEST_BIN) "test/*"
+	-cp -f build/debug/src/libduckdb.dll build/debug/test/
+	-cp -f C:/mingw64/bin/libgcc_s_seh-1.dll build/debug/test/
+	-cp -f C:/mingw64/bin/libstdc++-6.dll build/debug/test/
+	-cp -f C:/mingw64/bin/libwinpthread-1.dll build/debug/test/
+	./build/debug/test/unittest.exe "test/*"
 test_reldebug_internal:
-	$(call STAGE_TEST_DLLS,reldebug)
-	./build/reldebug/$(UNITTEST_BIN) "test/*"
+	-cp -f build/reldebug/src/libduckdb.dll build/reldebug/test/
+	-cp -f C:/mingw64/bin/libgcc_s_seh-1.dll build/reldebug/test/
+	-cp -f C:/mingw64/bin/libstdc++-6.dll build/reldebug/test/
+	-cp -f C:/mingw64/bin/libwinpthread-1.dll build/reldebug/test/
+	./build/reldebug/test/unittest.exe "test/*"
+else
+test_release_internal:
+	./build/release/test/unittest "test/*"
+test_debug_internal:
+	./build/debug/test/unittest "test/*"
+test_reldebug_internal:
+	./build/reldebug/test/unittest "test/*"
+endif
