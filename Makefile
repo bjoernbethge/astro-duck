@@ -24,6 +24,7 @@ else
 endif
 
 test_release_internal:
+	@echo "=== test_release_internal debug ===" && pwd && echo "OS=$(OS) UNITTEST_BIN=$(UNITTEST_BIN)" && ls -la build/release/test/ 2>&1 || true
 	./build/release/$(UNITTEST_BIN) "test/*"
 test_debug_internal:
 	./build/debug/$(UNITTEST_BIN) "test/*"
